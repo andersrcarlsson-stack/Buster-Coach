@@ -12,7 +12,8 @@ permissions:
   contents: write           # creating the release
 
 env:
-  QT_VERSION: '6.4.2'
+  QT_VERSION: '6.4.2'         # Linux
+  QT_VERSION_WINDOWS: '6.8.3' # Windows: the long-term Qt (under Wine, 6.4.2's engines went silent mid-game)
   BUSTER_VERSION: '7.0.3'
   BUSTER_URL: https://github.com/andersrcarlsson-stack/Buster-Chess/releases/download
 
@@ -109,11 +110,11 @@ jobs:
       - name: Qt (MinGW kit, and the MinGW it was built with)
         uses: jurplel/install-qt-action@v4
         with:
-          version: ${{ env.QT_VERSION }}
+          version: ${{ env.QT_VERSION_WINDOWS }}
           host: windows
           target: desktop
           arch: win64_mingw
-          tools: 'tools_mingw90,qt.tools.win64_mingw900'   # Qt's name for MinGW 11.2, the kit's own compiler
+          tools: 'tools_mingw1310,qt.tools.win64_mingw1310'   # MinGW 13.1, the kit's own compiler
           cache: true
 
       - name: Build
