@@ -1,0 +1,21 @@
+[Event "Buster Coach game"]
+[Site "Buster Coach"]
+[Date "2026.10.25"]
+[Round "-"]
+[White "You"]
+[Black "Buster 7.0.2"]
+[Result "*"]
+[Time "12:16:00"]
+[TimeControl "-"]
+[Level "5"]
+[ECO "C48"]
+[Opening "Four Knights Game: Spanish Variation, Ranken Variation"]
+[Annotator "Buster Coach"]
+
+1. e4 { [%eval 0.24] } 1... e5 { [%eval 0.16] } 2. Nf3 { [%eval 0.23] } 2...
+Nc6 { [%eval 0.15] } 3. Nc3 { [%eval 0.23] } 3... Nf6 { [%eval 0.26] } 4. Bb5 {
+[%eval 0.17] } 4... a6 { [%eval 0.18] } 5. Bxc6 { [%eval 0.39] } 5... dxc6 {
+[%eval 0.17] } 6. d4 { [%eval -0.21] } 6... exd4 { [%eval -0.26] } 7. Ne5? {
+[%eval -3.66] Best was Qxd4. } ( 7. Nxd4 { [%eval -0.38] Taken back. } 7... Bb4
+{ [%eval -0.24] } ) ( 7. Ne5? { [%eval -3.66] Taken back. Best was Qxd4. } 7...
+Qd6 { [%eval -3.37] } ) 7... Qd6 { [%eval -3.35] } { Not finished. } *

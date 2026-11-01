@@ -1,0 +1,8 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/">
+        <file>fonts/BusterPieces.ttf</file>
+        <file>data/openings.tsv</file>
+        <file threshold="30">data/book.bin</file>   <!-- random-looking keys save only ~55 %: under rcc's default 70 % -->
+    </qresource>
+</RCC>

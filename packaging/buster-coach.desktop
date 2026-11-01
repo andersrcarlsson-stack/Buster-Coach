@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Buster Coach
+Comment=A chess opponent with a coach beside you
+Exec=buster_gui
+Icon=buster-coach
+Categories=Game;BoardGame;
+Terminal=false

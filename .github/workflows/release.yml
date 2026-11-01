@@ -1,0 +1,173 @@
+# release.yml — builds Buster Coach for Linux (AppImage) and Windows (zip, a preview), each with the built-in Buster,
+# tests both, and on a tag "v<version>" publishes them as a GitHub release. Run by hand (Actions → release → Run
+# workflow) it builds and tests and keeps the two files as downloadable artifacts, without a release.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write           # creating the release
+
+env:
+  QT_VERSION: '6.4.2'
+  BUSTER_VERSION: '7.0.3'
+  BUSTER_URL: https://github.com/andersrcarlsson-stack/Buster-Chess/releases/download
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04   # an older glibc (2.35): the AppImage runs on more distributions
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version (from app/CMakeLists.txt; a tag must match it)
+        run: |
+          VERSION=$(grep -oP 'project\(buster_gui VERSION \K[0-9.]+' app/CMakeLists.txt)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
+            echo "::error::tag $GITHUB_REF_NAME doesn't match the version $VERSION in app/CMakeLists.txt"; exit 1
+          fi
+
+      - name: Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: gcc_64
+          cache: true
+
+      - name: System packages (X11 for the build and the AppImage, FUSE for linuxdeploy)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libxcb1-dev libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 libxcb-shape0 \
+            libxcb-cursor0 libfuse2 xvfb
+
+      - name: Build
+        run: |
+          cmake -S app -B build
+          cmake --build build -j"$(nproc)"
+
+      - name: Test (the six test programs)
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Buster
+        run: |
+          curl -fL -o build/buster "$BUSTER_URL/v$BUSTER_VERSION/buster-$BUSTER_VERSION-linux-x86_64"
+          chmod +x build/buster
+          printf 'uci\nquit\n' | build/buster | grep -q uciok
+
+      - name: Start once (offscreen, 15 s, with Buster beside it)
+        run: |
+          build/buster_gui --version
+          set +e
+          QT_QPA_PLATFORM=offscreen timeout 15 build/buster_gui
+          code=$?
+          [ $code -eq 124 ] || { echo "::error::the app ended by itself (exit $code) instead of running"; exit 1; }
+
+      - name: AppImage
+        run: |
+          mkdir -p AppDir/usr/bin AppDir/usr/share/doc/buster-coach
+          cp build/buster_gui build/buster AppDir/usr/bin/
+          cp README.md LICENSE THIRD-PARTY.md CHANGELOG.md licenses/*.txt AppDir/usr/share/doc/buster-coach/
+          curl -fsSL -O https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          curl -fsSL -O https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
+          export QMAKE="$(command -v qmake)"
+          export LDAI_OUTPUT="Buster-Coach-$VERSION-x86_64.AppImage"
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir -e AppDir/usr/bin/buster_gui \
+            -d packaging/buster-coach.desktop -i packaging/buster-coach.png --plugin qt --output appimage
+          ls -l "$LDAI_OUTPUT"
+
+      - name: "Start the AppImage once (on a virtual X screen: the AppImage ships the X11 plugin only)"
+        run: |
+          set +e
+          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a timeout 15 "./Buster-Coach-$VERSION-x86_64.AppImage"
+          code=$?
+          [ $code -eq 124 ] || { echo "::error::the AppImage ended by itself (exit $code)"; exit 1; }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: Buster-Coach-*-x86_64.AppImage
+
+  windows:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        run: echo "VERSION=$(grep -oP 'project\(buster_gui VERSION \K[0-9.]+' app/CMakeLists.txt)" >> "$GITHUB_ENV"
+
+      - name: Qt (MinGW kit, and the MinGW it was built with)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_mingw
+          tools: 'tools_mingw1120,qt.tools.win64_mingw1120'
+          cache: true
+
+      - name: Build
+        run: |
+          export PATH="$IQTA_TOOLS/mingw1120_64/bin:$PATH"
+          cmake -S app -B build -G "MinGW Makefiles"
+          cmake --build build -j"$NUMBER_OF_PROCESSORS"
+
+      - name: Test (the six test programs)
+        run: |
+          export PATH="$IQTA_TOOLS/mingw1120_64/bin:$PATH"
+          ctest --test-dir build --output-on-failure
+
+      - name: Package (Qt's libraries beside the program, Buster, the licences)
+        run: |
+          export PATH="$IQTA_TOOLS/mingw1120_64/bin:$PATH"
+          DIST="Buster-Coach-$VERSION"
+          mkdir -p "$DIST"
+          cp build/buster_gui.exe "$DIST/"
+          windeployqt --release --no-translations --no-system-d3d-compiler --no-opengl-sw "$DIST/buster_gui.exe"
+          curl -fL -o "$DIST/buster.exe" "$BUSTER_URL/v$BUSTER_VERSION/buster-$BUSTER_VERSION-windows-x86_64.exe"
+          cp README.md LICENSE THIRD-PARTY.md CHANGELOG.md "$DIST/"
+          mkdir -p "$DIST/licenses" && cp licenses/*.txt "$DIST/licenses/"
+          printf 'uci\nquit\n' | "$DIST/buster.exe" | grep -q uciok
+
+      - name: Start once (15 s; the runner's desktop is invisible, and the zip ships Windows' own plugin only)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "Buster-Coach-$env:VERSION\buster_gui.exe" -PassThru
+          Start-Sleep -Seconds 15
+          if ($p.HasExited) { Write-Error "the app ended by itself (exit $($p.ExitCode))"; exit 1 }
+          Stop-Process -Id $p.Id
+
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path "Buster-Coach-$env:VERSION" -DestinationPath "Buster-Coach-$env:VERSION-windows-x86_64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: Buster-Coach-*-windows-x86_64.zip
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+      - name: Release notes (this version's part of CHANGELOG.md)
+        run: awk '/^## /{n++} n==1' CHANGELOG.md > notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Buster Coach ${{ github.ref_name }}
+          body_path: notes.md
+          files: |
+            linux/*.AppImage
+            windows/*.zip

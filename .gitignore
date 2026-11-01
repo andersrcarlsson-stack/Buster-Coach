@@ -1,0 +1,4 @@
+build/
+Testing/
+*.AppImage
+__pycache__/

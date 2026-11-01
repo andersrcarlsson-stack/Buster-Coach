@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>The signs on the board</title>
+<style>
+  body { margin: 12px; }
+  h1 { font-size: x-large; }
+  td, th { padding: 3px 6px; }
+  .nav { font-size: small; }
+</style></head>
+<body>
+<p class="nav"><a href="index.html">← Contents</a></p>
+<h1>The signs on the board</h1>
+<p>Everything the coach shows on the board, by colour. What appears depends on your coaching level.</p>
+<p><strong>Your pieces</strong>: under the mouse, a piece that can move turns <strong>blue</strong> — click it to pick it up, and it turns
+<strong>green</strong>. Then the box follows the mouse to show where it can go.</p>
+<p><img src="images/piece_hover.png" width="120"> <img src="images/piece_picked.png" width="120"></p>
+<p><em>Left: the mouse on the g1 knight. Right: the knight picked up.</em></p>
+<p><strong>The box</strong> — the move you're pointing at, while a piece is picked up.</p>
+<ul>
+<li><strong>green</strong>: the best move the coach has found (exactly one);</li>
+<li><strong>amber</strong>: a playable move;</li>
+<li><strong>red</strong>: a mistake — it loses at least 15 points of winning chance, or two pawns, or it walks into a mate, or it
+  misses a forced mate you had;</li>
+<li><strong>black</strong>: not judged yet (the coach is still thinking), or move colours are off.</li>
+</ul>
+<p><img src="images/box_green.png" width="120"> <img src="images/box_amber.png" width="120"> <img src="images/box_red.png" width="120"> <img src="images/box_black.png" width="120"></p>
+<p>With <strong>colour-blind marks</strong> (Settings) the colours also get ▲ ● ▼ on the box's sides: best, playable, a mistake.</p>
+<p><img src="images/marks_green.png" width="120"> <img src="images/marks_amber.png" width="120"> <img src="images/marks_red.png" width="120"></p>
+<p><strong>A small open book</strong> on the box's edge: a book move, one that strong players often choose here. The colour stays the
+coach's verdict, so an amber box with a book means "popular, but it costs something". In opening practice, a
+<strong>hollow</strong> book marks a book move that leaves the opening you're practising.</p>
+<p><img src="images/book.png" width="120"> <img src="images/book_hollow.png" width="120"></p>
+<p><strong>The last move</strong>: a soft glow on the square a piece arrived on, a paler spot where it came from.
+<strong>Check</strong>: a red glow behind the king in check.</p>
+<p><img src="images/lastmove.png" width="180"> <img src="images/check.png" width="180"></p>
+<p><em>Left: White has just played e2–e4. Right: the bishop has just taken on f7, and the black king is in check.</em></p>
+<p><strong>The hint</strong> (H): magenta — the piece first, then (H again) a magenta box on its target.</p>
+<p><img src="images/hint_piece.png" width="120"> <img src="images/hint.png" width="120"></p>
+<p><em>Left: the first H, the piece to move. Right: the second H, where it goes.</em></p>
+<p><strong>A red "!"</strong> in a square's corner: <strong>your</strong> piece there is hanging (attacked and not properly defended). Once the
+coach has looked and finds no real threat, the "!" goes: taking the piece wouldn't pay the opponent right now. The
+opponent's hanging pieces are never marked; you have to find them, or ask (linger on them).
+<strong>The threat</strong> (T): the opponent's piece and the square it would strike, flashed in red.</p>
+<p><img src="images/hanging.png" width="180"> <img src="images/threat.png" width="180"></p>
+<p><em>Left: your knight on e5 is attacked by the d6 pawn and not defended. Right: the threat — the knight would take your
+queen.</em></p>
+<p><strong>Violet</strong>: you tried a move that isn't legal (only with guidance off).</p>
+<p><img src="images/illegal.png" width="120"></p>
+<p><em>The knight can't go to g3: the square turns violet.</em></p>
+<p><strong>At the end of a game</strong> the mated king turns deep red, or both kings grey for a draw, and a banner across the
+board says what happened. Click the board to put it away.</p>
+<p><img src="images/gameend.png" width="320"></p>
+<p><em>White is mated: the red king on e1, and the banner with the result and the game's length.</em></p>
+<p><strong>The eval bar</strong> (left of the board) is your chance of winning as the coach sees it: blue from the bottom is yours,
+grey from the top is the opponent's, and the black line across the middle is equal. The number at the blue's edge is
+your chance in percent ("M3": a mate in three). With a piece picked up, a coloured frame shows your chance <strong>if</strong> you
+play the move under the box: green means you keep it, red means it drops. At the end of the game it shows WON, LOST
+or DRAW.</p>
+<p><img src="images/evalbar.png" width="32"> <img src="images/evalbar_green.png" width="32"> <img src="images/evalbar_red.png" width="32"></p>
+<p><em>Left: a 62 % chance. Middle: a piece picked up, the box on a move that keeps the 62 % (green frame). Right: a move
+that would drop it to about 40 % (red frame, down to where your chance would be).</em></p>
+<p><strong>The graph</strong> under the move list shows your winning chance after every move of the game: blue above the middle line
+(better for you), grey below it. A red dot marks each mistake of yours, and the amber line marks the move the board
+is showing. Click a point to see that position.</p>
+<p><img src="images/graph.png" width="320"></p>
+<p><em>A game with two mistakes: the first cost a little, the second turned a good position into a worse one, and then
+the game turned your way.</em></p>
+<p><strong>The coloured dot</strong> in the status bar (bottom left) shows how settled the coach's verdicts are: yellow while they're
+still changing, deep green once the coach has looked deeply enough that they no longer change. The box colours are
+most reliable at deep green.</p>
+<p><img src="images/dot_yellow.png" width="30"> <img src="images/dot_green.png" width="30"></p>
+<p><em>Left: still thinking. Right: settled.</em></p>
+<hr>
+<p class="nav"><a href="index.html">← Previous: Welcome to Buster Coach</a> &nbsp;·&nbsp; <a href="asking.html">Next: Asking the coach →</a></p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+</body></html>
