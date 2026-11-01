@@ -5,22 +5,30 @@
 //   2. The clock: start, a move made, stop, time remaining
 
 #include "chessclock.h"
-#include <format>
+#include <cstdio>
 
 // =================================================================================================
 // 1. THE DISPLAY: formatting, low-time alerts
 // =================================================================================================
+// snprintf, not std::format: the release builds use g++ 11 (Ubuntu 22.04 for the AppImage, Qt 6.4.2's MinGW on
+// Windows), and <format> came in g++ 13.
 std::string formatClock(long long ms) {
     if (ms <= 0)
         return "0.0";                                       // out of time
-    if (ms < 10000)                                         // under 10 s: seconds and tenths, "8.4"
-        return std::format("{}.{}", ms / 1000, ms / 100 % 10);
+    char text[32];
+    if (ms < 10000) {                                       // under 10 s: seconds and tenths, "8.4"
+        std::snprintf(text, sizeof text, "%lld.%lld", ms / 1000, ms / 100 % 10);
+        return text;
+    }
     const long long s = ms / 1000;                          // whole seconds: integer division rounds down
     const long long h = s / 3600, m = s / 60 % 60, sec = s % 60;
     if (h > 0)
-        return std::format("{}:{:02}:{:02}", h, m, sec);    // "1:30:00"
-    return std::format("{}:{:02}", m, sec);                 // "5:00", "0:59"
+        std::snprintf(text, sizeof text, "%lld:%02lld:%02lld", h, m, sec);   // "1:30:00"
+    else
+        std::snprintf(text, sizeof text, "%lld:%02lld", m, sec);             // "5:00", "0:59"
+    return text;
 }
+
 
 ClockAlert clockAlert(long long remainingMs, long long startMs) {
     if (remainingMs < 10000)

@@ -112,23 +112,23 @@ jobs:
           host: windows
           target: desktop
           arch: win64_mingw
-          tools: 'tools_mingw1120,qt.tools.win64_mingw1120'
+          tools: 'tools_mingw90,qt.tools.win64_mingw900'   # Qt's name for MinGW 11.2, the kit's own compiler
           cache: true
 
       - name: Build
         run: |
-          export PATH="$IQTA_TOOLS/mingw1120_64/bin:$PATH"
+          export PATH="$(ls -d "$IQTA_TOOLS"/mingw*/bin | head -1):$PATH"
           cmake -S app -B build -G "MinGW Makefiles"
           cmake --build build -j"$NUMBER_OF_PROCESSORS"
 
       - name: Test (the six test programs)
         run: |
-          export PATH="$IQTA_TOOLS/mingw1120_64/bin:$PATH"
+          export PATH="$(ls -d "$IQTA_TOOLS"/mingw*/bin | head -1):$PATH"
           ctest --test-dir build --output-on-failure
 
       - name: Package (Qt's libraries beside the program, Buster, the licences)
         run: |
-          export PATH="$IQTA_TOOLS/mingw1120_64/bin:$PATH"
+          export PATH="$(ls -d "$IQTA_TOOLS"/mingw*/bin | head -1):$PATH"
           DIST="Buster-Coach-$VERSION"
           mkdir -p "$DIST"
           cp build/buster_gui.exe "$DIST/"
