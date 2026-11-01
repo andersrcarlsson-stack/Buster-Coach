@@ -25,16 +25,17 @@ Everything is explained in the built-in help (F1), with pictures.
 
 ## Download
 
-From the [Releases](../../releases) page:
+**The first release is being prepared.** Until then, build it from source (below); on Linux that takes a few minutes.
+When it's out, the [Releases](../../releases) page will have:
 
-- **Linux** (the main release): `Buster-Coach-<version>-x86_64.AppImage`. Make it executable and start it:
+- **Linux:** `Buster-Coach-<version>-x86_64.AppImage`. Make it executable and start it:
   ```
   chmod +x Buster-Coach-*-x86_64.AppImage
   ./Buster-Coach-*-x86_64.AppImage
   ```
-- **Windows** (a preview): `Buster-Coach-<version>-windows-x86_64.zip`. Unzip it anywhere and start
-  `buster_gui.exe`. It is built and tested by the same workflow and checked under Wine, but not yet on a real Windows
-  machine: if something doesn't work, please open an issue.
+- **Windows:** a zip to unzip anywhere, then start `buster_gui.exe`. A Windows build exists, but it hasn't been tested
+  on a real Windows PC yet: under Wine its engines can stop answering in the middle of a game. If you try it on
+  Windows, please open an issue and say how it went.
 
 Nothing to install: the chess engine [Buster](https://github.com/andersrcarlsson-stack/Buster-Chess) comes with it,
 and plays as both the opponent and the coach.
@@ -45,7 +46,7 @@ and plays as both the opponent and the coach.
   built-in Buster uses those instructions. On an older processor Buster can't start; the app says so, and you can
   choose another UCI engine in Engine → Engines… (Stockfish, for example).
 - **A screen of at least 1366 × 768.**
-- Linux: any recent 64-bit distribution (the AppImage carries its own Qt). Windows: 10 or 11, 64-bit.
+- Linux: any recent 64-bit distribution (the AppImage carries its own Qt). Windows (not yet tested): 10 or 11, 64-bit.
 
 ## Other engines
 
