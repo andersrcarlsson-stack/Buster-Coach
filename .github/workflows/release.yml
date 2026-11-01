@@ -58,11 +58,12 @@ jobs:
         run: |
           curl -fL -o build/buster "$BUSTER_URL/v$BUSTER_VERSION/buster-$BUSTER_VERSION-linux-x86_64"
           chmod +x build/buster
-          printf 'uci\nquit\n' | build/buster | grep -q uciok
+          answer=$(printf 'uci\nquit\n' | build/buster)        # all of it first: grep -q would close the pipe early
+          grep -q uciok <<<"$answer"
 
       - name: Start once (offscreen, 15 s, with Buster beside it)
         run: |
-          build/buster_gui --version
+          QT_QPA_PLATFORM=offscreen build/buster_gui --version   # a QApplication even here: it needs a platform
           set +e
           QT_QPA_PLATFORM=offscreen timeout 15 build/buster_gui
           code=$?
@@ -132,11 +133,16 @@ jobs:
           DIST="Buster-Coach-$VERSION"
           mkdir -p "$DIST"
           cp build/buster_gui.exe "$DIST/"
-          windeployqt --release --no-translations --no-system-d3d-compiler --no-opengl-sw "$DIST/buster_gui.exe"
+          QMAKE="$QT_ROOT_DIR/bin/qmake.exe"           # the installed kit's own: where its plugins really are
+          echo "plugins: $("$QMAKE" -query QT_INSTALL_PLUGINS)"
+          windeployqt --qmake "$QMAKE" --release --no-translations --no-system-d3d-compiler --no-opengl-sw \
+            "$DIST/buster_gui.exe"
+          [ -f "$DIST/platforms/qwindows.dll" ] || { echo "::error::no platforms/qwindows.dll in the package"; exit 1; }
           curl -fL -o "$DIST/buster.exe" "$BUSTER_URL/v$BUSTER_VERSION/buster-$BUSTER_VERSION-windows-x86_64.exe"
           cp README.md LICENSE THIRD-PARTY.md CHANGELOG.md "$DIST/"
           mkdir -p "$DIST/licenses" && cp licenses/*.txt "$DIST/licenses/"
-          printf 'uci\nquit\n' | "$DIST/buster.exe" | grep -q uciok
+          answer=$(printf 'uci\nquit\n' | "$DIST/buster.exe")
+          grep -q uciok <<<"$answer"
 
       - name: Start once (15 s; the runner's desktop is invisible, and the zip ships Windows' own plugin only)
         shell: pwsh
