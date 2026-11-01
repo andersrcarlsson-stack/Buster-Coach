@@ -133,11 +133,24 @@ jobs:
           DIST="Buster-Coach-$VERSION"
           mkdir -p "$DIST"
           cp build/buster_gui.exe "$DIST/"
-          QMAKE="$QT_ROOT_DIR/bin/qmake.exe"           # the installed kit's own: where its plugins really are
-          echo "plugins: $("$QMAKE" -query QT_INSTALL_PLUGINS)"
-          windeployqt --qmake "$QMAKE" --release --no-translations --no-system-d3d-compiler --no-opengl-sw \
-            "$DIST/buster_gui.exe"
+          # No --release: with MinGW, windeployqt's release/debug check can reject the platform plugin ("Unable to find
+          # the platform plugin"). If it still leaves the plugin out, the plugins come straight from the kit.
+          windeployqt --qtpaths "$QT_ROOT_DIR/bin/qtpaths.exe" --no-translations --no-system-d3d-compiler \
+            --no-opengl-sw "$DIST/buster_gui.exe" || echo "windeployqt: exit $? (checked below)"
+          for dir in platforms styles; do
+            if [ ! -d "$DIST/$dir" ]; then
+              mkdir -p "$DIST/$dir"
+              cp "$QT_ROOT_DIR/plugins/$dir/"*.dll "$DIST/$dir/"
+            fi
+          done
+          for dll in Qt6Core Qt6Gui Qt6Widgets; do
+            [ -f "$DIST/$dll.dll" ] || cp "$QT_ROOT_DIR/bin/$dll.dll" "$DIST/"
+          done
+          for dll in libgcc_s_seh-1 libstdc++-6 libwinpthread-1; do      # MinGW's runtime
+            [ -f "$DIST/$dll.dll" ] || cp "$(dirname "$(command -v g++)")/$dll.dll" "$DIST/"
+          done
           [ -f "$DIST/platforms/qwindows.dll" ] || { echo "::error::no platforms/qwindows.dll in the package"; exit 1; }
+          find "$DIST" -name '*.dll' | sort
           curl -fL -o "$DIST/buster.exe" "$BUSTER_URL/v$BUSTER_VERSION/buster-$BUSTER_VERSION-windows-x86_64.exe"
           cp README.md LICENSE THIRD-PARTY.md CHANGELOG.md "$DIST/"
           mkdir -p "$DIST/licenses" && cp licenses/*.txt "$DIST/licenses/"
