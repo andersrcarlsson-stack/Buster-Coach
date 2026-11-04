@@ -1,4 +1,4 @@
-# release.yml — builds Buster Coach for Linux (AppImage) and Windows (zip, a preview), each with the built-in Buster,
+# release.yml — builds Buster Coach for Linux (AppImage) and Windows (zip), each with the built-in Buster,
 # tests both, and on a tag "v<version>" publishes them as a GitHub release. Run by hand (Actions → release → Run
 # workflow) it builds and tests and keeps the two files as downloadable artifacts, without a release.
 name: release
