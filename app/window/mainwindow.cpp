@@ -182,7 +182,9 @@ void MainWindow::createEngines() {
     connect(m_game, &Game::humanTurnStarted, m_coach, &Coach::onHumanTurnStarted);
     connect(m_game, &Game::humanTurnEnded, m_coach, &Coach::cancel);
     connect(m_game, &Game::opponentTurnStarted, m_coach, &Coach::onOpponentTurnStarted);   // its moves, for its pick
-    connect(m_coach, &Coach::opponentTableReady, m_game, [this]() { m_game->setOpponentTable(m_coach->opponentTable()); });
+    connect(m_coach, &Coach::opponentTableReady, m_game, [this]() {
+        m_game->setOpponentTable(m_coach->opponentTable(), m_coach->opponentHope(), m_coach->opponentLook());
+    });
     connect(m_board, &BoardWidget::boxMoveChanged, m_coach, &Coach::setAttention);
     connect(m_game, &Game::humanTurnStarted, m_master, &MasterCoach::onHumanTurnStarted);
     connect(m_game, &Game::humanTurnEnded, m_master, &MasterCoach::cancel);

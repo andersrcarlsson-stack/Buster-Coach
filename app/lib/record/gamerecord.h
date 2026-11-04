@@ -34,7 +34,7 @@ struct GameInfo {
     std::string date {};                 // "2026.10.25"
     std::string time {};                 // "14:32" (the file's name; the UTCTime-like tag)
     std::string timeControl = "-";       // "300+3" (seconds + increment); "-" = untimed
-    int level = 0;                       // the opponent's strength, 1..10
+    int level = 0;                       // the opponent's strength, 1..11 (until 2026-11-04 1..10, 10 = full)
     std::string result = "*";            // "1-0", "0-1", "1/2-1/2", or "*" (not finished)
     std::string ending {};               // how it ended, in words: "checkmate", "White resigned", "abandoned", …
     std::string eco {}, opening {};      // "B90", "Sicilian Defense: Najdorf Variation" ("" = no name)

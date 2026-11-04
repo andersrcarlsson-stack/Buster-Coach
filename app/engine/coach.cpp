@@ -24,6 +24,9 @@ static const int maxDepth = 14;
 
 // "0000" is UCI's null move. In the queue it stands for the pass (the threat search), never one of your moves.
 static const QString passMove = "0000";
+// The opponent's moves as they really are (the pick by horizon): deeper than any level's view (the top levels see
+// depth 4), so a trap beyond the view shows.
+static const int opponentDeepDepth = 8;
 
 
 // =================================================================================================
@@ -84,26 +87,53 @@ void Coach::onHumanTurnStarted(const QString &startFen, const QStringList &moves
         scoreNext(); // otherwise onEngineReady starts it
 }
 
-// The opponent's engine thinks (release_design.md 14): score the OPPONENT's moves once, at depth 6, for its pick: no
-// threat, no deeper passes. Your table (m_scores, m_moves) stays as it was: the record and the cards still read it.
-void Coach::onOpponentTurnStarted(const QString &startFen, const QStringList &moves, const Position::Chess &position) {
+// The opponent's engine thinks (release_design.md 14, two kinds of mistakes): score the OPPONENT's moves for its
+// pick: as it sees them in a lapse and in an oversight (the views the level uses: cheap), then as they are (depth 8).
+// No threat, no passes. Your table (m_scores, m_moves) stays as it was: the record and the cards still read it.
+void Coach::onOpponentTurnStarted(const QString &startFen, const QStringList &moves, const Position::Chess &position,
+                                  bool hope, int horizon) {
     cancel();
     m_forOpponent = true;
     m_prefix = "position fen " + startFen + " moves ";
     if (!moves.isEmpty())
         m_prefix += moves.join(' ') + " ";
     m_opponentTable.clear();
-    m_queue.clear();
+    m_opponentHope.clear();
+    m_opponentLook.clear();
+    m_opponentQueue.clear();
+    QList<OpponentSearch> deep;
     Moves mover;
     for (Position::Move m : m_model.LegalMoves(position).moves) {   // a copy: make() takes a non-const Move&
         const std::string uci = m_model.MoveToUci(m);
-        const Position::GameState after = m_model.State(mover.make(position, m));
-        if (after == Position::GameState::Ongoing)
-            m_queue << QString::fromStdString(uci);
-        else                                         // ends the game: exact, no search (as for yours)
-            m_opponentTable[uci] = (after == Position::GameState::Checkmate) ? UciInfo{99, true, 1} : UciInfo{99, false, 0};
+        const QString move = QString::fromStdString(uci);
+        const Position::Chess after = mover.make(position, m);
+        const Position::GameState state = m_model.State(after);
+        if (state != Position::GameState::Ongoing) {   // ends the game: exact, no search (as for yours), seen too
+            m_opponentTable[uci] = (state == Position::GameState::Checkmate) ? UciInfo{99, true, 1} : UciInfo{99, false, 0};
+            if (hope)
+                m_opponentHope[uci] = m_opponentTable[uci];
+            if (horizon > 0)
+                m_opponentLook[uci] = m_opponentTable[uci];
+            continue;
+        }
+        if (hope) {   // a lapse: the other side passes, the mover looks once more (its own threats, blind to the reply);
+                      // a move that gives check can't be passed over: the plain depth 1 instead
+            const std::optional<Position::Chess> passed = m_model.PassTurn(after);
+            if (passed && m_model.State(*passed) == Position::GameState::Ongoing)
+                m_opponentQueue << OpponentSearch{move, "position fen " + QString::fromStdString(m_model.FenOutput(*passed)),
+                                                  1, &m_opponentHope, true};
+            else
+                m_opponentQueue << OpponentSearch{move, m_prefix + move, 1, &m_opponentHope, false};
+        }
+        if (horizon > 0)   // an oversight: a short look (every capture seen, a quiet resource beyond it not)
+            m_opponentQueue << OpponentSearch{move, m_prefix + move, horizon, &m_opponentLook, false};
+        deep << OpponentSearch{move, m_prefix + move, opponentDeepDepth, &m_opponentTable, false};
     }
-    m_depth = 6;
+    m_opponentQueue << deep;                         // the truth after the views: the views first are the cheap part
+    // A fresh hash for the view: the engine still holds deep results for these positions (your turn's analysis, the
+    // last truth), and a shallow search would read them and see as far as they did (pickcheck, 2026-11-04: depth 2
+    // gave depth 8's scores). "ucinewgame" asks a UCI engine to forget them; the truth then rebuilds its own.
+    m_engine->send("ucinewgame");
     if (m_engineReady)
         scoreNext();
 }
@@ -128,11 +158,12 @@ void Coach::onBestMove(const QString &) {
     m_searching = false;
     UciInfo score = m_lastInfo;
     score.score = -score.score;
-    if (m_current == passMove) {          // the threat search: kept apart, it isn't one of your moves
+    if (m_forOpponent) {                  // the opponent's move: into its view or its truth (first: m_current is yours)
+        const UciInfo mine = m_opponentSearch.moverToMove ? m_lastInfo : score;   // "hope": the mover was to move
+        (*m_opponentSearch.table)[m_opponentSearch.move.toStdString()] = mine;
+    } else if (m_current == passMove) {   // the threat search: kept apart, it isn't one of your moves
         m_pass = score;
         emit threatSearched(score);
-    } else if (m_forOpponent) {           // the opponent's move: into its own table
-        m_opponentTable[m_current.toStdString()] = score;
     } else {
         m_scores.insert(m_current, score);
         emit moveScored(m_current, score);
@@ -154,11 +185,18 @@ UciInfo Coach::bestScore() const {
 
 // One search at a time: the engine answers each "go" with exactly one bestmove.
 void Coach::scoreNext() {
-    if (m_queue.isEmpty()) {
-        if (m_forOpponent) {
-            emit opponentTableReady();    // one pass only: the pick has what it needs
+    if (m_forOpponent) {                  // the opponent's work: its own queue, each search with its own position
+        if (m_opponentQueue.isEmpty()) {
+            emit opponentTableReady();    // the view and the truth: the pick has what it needs
             return;
         }
+        m_opponentSearch = m_opponentQueue.takeFirst();
+        m_engine->send(m_opponentSearch.position);
+        m_engine->send("go depth " + QString::number(m_opponentSearch.depth));
+        m_searching = true;
+        return;
+    }
+    if (m_queue.isEmpty()) {
         if (m_pass.depth > 0) {   // a pass was searched this turn (not in check)
             // Real: passing would be a red move. Not while you have a forced mate: you mate first (and passing
             // "misses" that mate, which isn't the opponent's threat).
@@ -195,6 +233,7 @@ void Coach::scoreNext() {
 // Drop all pending work. A running search is stopped; its bestmove (UCI: it still comes) is skipped.
 void Coach::cancel() {
     m_queue.clear();
+    m_opponentQueue.clear();
     if (m_searching) {
         m_engine->send("stop");
         ++m_staleBestMoves;
@@ -602,7 +641,7 @@ QString Coach::stopWords(const Position::Chess &before, const Position::Move &yo
 // The coach engine is ready. If a turn started before that, its queue is waiting: start it now.
 void Coach::onEngineReady() {
     m_engineReady = true;
-    if (!m_queue.isEmpty() && !m_searching)
+    if ((!m_queue.isEmpty() || !m_opponentQueue.isEmpty()) && !m_searching)
         scoreNext();
 }
 

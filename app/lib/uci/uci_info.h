@@ -38,24 +38,30 @@ enum class MoveQuality { Correct, Playable, Bad };
 // avoids, OR it misses a forced mate the best move has (a slower mate is fine). Otherwise Playable.
 MoveQuality classifyMove(const UciInfo &best, const UciInfo &move, bool correct);
 
-// The opponent's mistakes (release_design.md 14): a level's settings. loyalty: the weight of the engine's own move;
-// cap: the variety pick's biggest loss, in win-chance points (0.0 .. 1.0) against the engine's move (0 = none);
-// blunder: the chance per move of a BIG blunder (a move losing 30+ points: humans hang pieces, a search seldom does).
-struct Fallibility { double loyalty; double cap; double blunder = 0.0; };
+// The opponent's mistakes (release_design.md 14, two kinds of human mistakes, 2026-11-04): a level's settings, as
+// chances per move. lapse: it plays from the "hope" view (didn't check the reply: can hang a piece; the weak levels
+// only); oversight: from a short look (every capture seen, a quiet resource not); best: the share of the oversights
+// that play the look's best-looking move (a stronger player trusts it more), the rest choosing among the near-best;
+// margin: how close to the best-looking move a near-best one must look, in win-chance points (a lapse's: 5 points).
+struct Fallibility { double lapse = 0.0; double oversight = 0.0; double margin = 0.15; double best = 0.0; };
 
 // The move the opponent plays, and whether it's a mistake (Bad by classifyMove, against the engine's own move).
 struct Pick { std::string move; bool mistake; };
 
-// Pick the opponent's move. table: every legal move's score from the MOVER's view (the coach's first pass).
-// First the blunder chance: dice below `blunder` picks evenly among the moves losing 30+ points (a mistake).
-// Otherwise the variety pick on the rest of the dice: the engine's move = loyalty; another move within the cap = 1 (as good or better) falling to 0 at the cap;
-// beyond it, 0. dice (0.0 .. 1.0, from the caller: repeatable tests) picks one in proportion: the engine's move
-// first, then the table's order. The engine's move, never a mistake, with no cap, an empty table, the engine's move
-// missing from it, or a DECIDED position: its move is a found mate, or 95 %+ for either side (then the table's
-// shallow scores can't tell progress from shuffling, and a random pick would undo the engine's plan: a won K+R v K
-// left unmated, autoplay 2026-10-26). Mistakes belong to the undecided game.
-Pick pickMove(const std::string &engineMove, const std::map<std::string, UciInfo> &table, Fallibility level,
-              double dice);
+// Pick the opponent's move: only mistakes a player of the level could make (a move that LOOKS fine, punished beyond
+// what it sees). deep: every legal move's true score (the coach, depth 8); hope, look: the same moves as the opponent
+// sees them in a lapse and in an oversight (empty = that view isn't used). All from the MOVER's view.
+// dice (0.0 .. 1.0, from the caller: repeatable tests): below `lapse` a lapse, then up to lapse + oversight an
+// oversight (its first `best` share playing the look's best-looking move), else the engine's move. Otherwise the rest
+// of the dice (stretched back to 0..1) picks among that view's moves that look fine: within its margin of the
+// best-looking one, weighted 1 at the best falling to 0 at the margin, in the view's order (the first best-looking one
+// when only the best counts). Whether that's a mistake, and how big, the deep scores decide; mistakes are
+// never chosen by their size. The engine's move also with an empty view, the engine's move missing from the deep
+// table, or a DECIDED position (its move is a found mate, or 95 %+ for either side: a random pick would undo the
+// engine's plan, a won K+R v K left unmated, autoplay 2026-10-26). A move the deep table doesn't know is never picked.
+Pick pickMove(const std::string &engineMove, const std::map<std::string, UciInfo> &deep,
+              const std::map<std::string, UciInfo> &hope, const std::map<std::string, UciInfo> &look,
+              Fallibility level, double dice);
 
 // The red moves' common reply (why_design.md, kind 3): the most frequent reply among them, if it punishes at least 3
 // red moves AND at least half of them. replies: one per red move (its punishing reply). nullopt = no common reply.

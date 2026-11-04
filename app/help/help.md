@@ -26,7 +26,7 @@ can select another engine to drive the coach.
 
 **Choose how much help you want** in the Coaching menu, from **Tournament** (none at all) to **Full coaching**
 (everything). And choose your opponent's strength on the slider in its strip, from **1 · Beginner** to
-**10 · Full strength**.
+**11 · Full strength**.
 
 More:
 - [The signs on the board](#signs) — every colour and mark, and what it means
@@ -242,8 +242,8 @@ eval bar and everything you can **ask** for. **Full coaching** also colours your
 Your opponent is a chess engine: Buster, which comes with the app, or any other UCI engine you choose under Engine →
 Engines…. The slider in its strip sets its strength.
 
-**What the levels mean.** Levels 1 to 9 are meant to play like **human players** of rising strength, and level 10 is
-the engine at full strength.
+**What the levels mean.** Levels 1 to 10 are meant to play like **human players** of rising strength, and level 11
+is the engine at full strength.
 
 | Level | Plays roughly like |
 |---|---|
@@ -256,7 +256,8 @@ the engine at full strength.
 | 7 · Expert | about 1900 |
 | 8 · Strong expert | about 2050 |
 | 9 · Candidate master | about 2200 |
-| 10 · Full strength | the engine at full strength — far beyond human |
+| 10 · Master | about 2400 |
+| 11 · Full strength | the engine at full strength — far beyond human |
 
 The ratings belong to the built-in Buster: the levels were measured with it. With another engine the levels keep
 their order, but not their ratings, so the slider then shows the names only.
@@ -264,11 +265,15 @@ their order, but not their ratings, so the slider then shows the names only.
 Each level is meant to be a clear step up from the one below: if you beat a level about two games out of three, the
 next one is about right for you.
 
-**How a level plays.** A real player doesn't lose because they think too little; they lose by **mistakes**: mostly
-small ones, and now and then a big one — a piece left hanging, a mate overlooked. The levels copy that:
+**How a level plays.** A real player doesn't lose because they think too little; they lose by **mistakes**: a move
+that looked fine to them, punished by something they didn't see. How far a player sees is what their rating is
+about. The levels copy that:
 - the engine **thinks less** at the lower levels, which gives it the small inaccuracies;
-- and now and then it makes a **real blunder on purpose**, about as often as players of that rating do.
-When it does, the saved game marks the move with "?" and says what it should have played, and at Guided and Full
+- and each level has a **horizon**: how far ahead it looks when it judges a move. Now and then it plays the move that
+  looks best within its horizon instead of the engine's own choice. Usually that's a fine move; but when the position
+  hides a trap just beyond the horizon, it walks into it, as a player of that rating would. A beginner may leave a
+  piece where it can simply be taken; a 2200 player never does, but can miss a combination three moves deep.
+When it errs, the saved game marks the move with "?" and says what it should have played, and at Guided and Full
 coaching a card tells you "Buster slipped. There's something here." Spotting and punishing mistakes is a big part of
 getting better.
 

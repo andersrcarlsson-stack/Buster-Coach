@@ -154,6 +154,13 @@ void MainWindow::setupSidePanel()
     connect(m_opponentStrip, &PlayerStrip::levelChanged, m_opponentStrip, [](int level) {
         QSettings().setValue("strength/level", level);
     });
+    // Up to 2026-11-04 the slider had 10 levels, 10 = full strength; level 10 is now ≈ 2400 and full strength 11. A
+    // saved 10 from then still means full strength: moved up once (the "strength/levels" mark says it's done).
+    if (QSettings().value("strength/levels", 10).toInt() < 11) {
+        if (QSettings().value("strength/level", 5).toInt() == 10)
+            QSettings().setValue("strength/level", 11);
+        QSettings().setValue("strength/levels", 11);
+    }
     const int level = QSettings().value("strength/level", 5).toInt();
     m_opponentStrip->showStrength(level);
     m_game->setLevel(level);   // showStrength only signals a CHANGE: a saved 1 is the slider's own start value

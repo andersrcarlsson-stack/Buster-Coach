@@ -162,36 +162,86 @@ int main() {
         if (!ok) ++failures;
     }
     
-    // --- pickMove: the opponent's mistakes (release_design.md 14) ------------------------------------------------
-    // Scores from the mover's view (cp). Buster plays e2e4; the coach likes c2c4 better; f2f3 is a blunder.
-    const std::map<std::string, UciInfo> table = {
-        {"a2a3", {6, false, -10}}, {"c2c4", {6, false, 45}}, {"d2d4", {6, false, 25}},
-        {"e2e4", {6, false, 30}}, {"f2f3", {6, false, -400}}, {"g1f3", {6, false, 20}}};
-    struct PickCase { std::string name; std::string engine; Fallibility level; double dice; std::string move;
-                      bool mistake; };
+    // --- pickMove: the opponent's mistakes, two kinds (release_design.md 14, 2026-11-04) ---------------------------
+    // deep: the truth (cp, mover's view). Buster plays e2e4; c2c4 is better; f2f3 hangs a piece (-400).
+    const std::map<std::string, UciInfo> deep = {
+        {"a2a3", {8, false, -10}}, {"c2c4", {8, false, 45}}, {"d2d4", {8, false, 25}},
+        {"e2e4", {8, false, 30}}, {"f2f3", {8, false, -400}}, {"g1f3", {8, false, 20}}};
+    // calm: the view sees what the truth sees. Within 5 points of the best-looking c2c4: c2c4 (weight 1), d2d4 (0.43),
+    // e2e4 (0.57), g1f3 (0.29), in that order; total 2.29. f2f3 looks as bad as it is.
+    const std::map<std::string, UciInfo> calm = {
+        {"a2a3", {2, false, -10}}, {"c2c4", {2, false, 45}}, {"d2d4", {2, false, 25}},
+        {"e2e4", {2, false, 30}}, {"f2f3", {2, false, -400}}, {"g1f3", {2, false, 20}}};
+    // lure: at the horizon f2f3 looks best by far (+80: the reply that wins the piece is beyond it): the only one.
+    const std::map<std::string, UciInfo> lure = {
+        {"a2a3", {1, false, -10}}, {"c2c4", {1, false, 40}}, {"d2d4", {1, false, 28}},
+        {"e2e4", {1, false, 30}}, {"f2f3", {1, false, 80}}, {"g1f3", {1, false, 22}}};
+    std::map<std::string, UciInfo> extra = calm;          // a move the truth doesn't know: never picked, nor the yardstick
+    extra["h2h4"] = {2, false, 500};
+    // Oversights (the short look, margin 5 here): the dice below the chance picks from the look.
+    struct PickCase { std::string name; const std::map<std::string, UciInfo> &view; Fallibility level; double dice;
+                      std::string move; bool mistake; };
     const PickCase picks[] = {
-        {"loose: the dice on its own move",  "e2e4", {1.0, 0.5},  0.10, "e2e4", false},
-        {"loose: a weaker move, playable",   "e2e4", {1.0, 0.5},  0.30, "a2a3", false},
-        {"loose: better counts as good",     "e2e4", {1.0, 0.5},  0.50, "c2c4", false},
-        {"loose: the blunder, a mistake",    "e2e4", {1.0, 0.5},  0.79, "f2f3", true},
-        {"loose: the last in the table",     "e2e4", {1.0, 0.5},  0.95, "g1f3", false},
-        {"tight: mostly its own move",       "e2e4", {4.0, 0.02}, 0.50, "e2e4", false},
-        {"tight: a near-equal move",         "e2e4", {4.0, 0.02}, 0.90, "d2d4", false},
-        {"tight: the last near-equal move",  "e2e4", {4.0, 0.02}, 0.99, "g1f3", false},
-        {"no cap: always its own move",      "e2e4", {1.0, 0.0},  0.79, "e2e4", false},
-        {"not in the table: its own move",   "h2h4", {1.0, 0.5},  0.79, "h2h4", false},
+        {"outside the chance: its own move",      calm,  {0, 0.5, 0.05}, 0.60, "e2e4", false},
+        {"calm look: the best-looking, better",   calm,  {0, 0.5, 0.05}, 0.10, "c2c4", false},
+        {"calm look: the second weight",          calm,  {0, 0.5, 0.05}, 0.25, "d2d4", false},
+        {"calm look: its own move by the look",   calm,  {0, 0.5, 0.05}, 0.35, "e2e4", false},
+        {"calm look: the last that looks fine",   calm,  {0, 0.5, 0.05}, 0.48, "g1f3", false},
+        {"lure: the move that looks best, a mistake", lure, {0, 0.5, 0.05}, 0.20, "f2f3", true},
+        {"lure: anywhere in the chance, the same", lure, {0, 0.5, 0.05}, 0.49, "f2f3", true},
+        {"no chance: always its own move",        lure,  {0, 0.0, 0.05}, 0.10, "e2e4", false},
+        {"unknown to the truth: never picked",    extra, {0, 0.5, 0.05}, 0.10, "c2c4", false},
+        {"an empty look: its own move",           {},    {0, 0.5, 0.05}, 0.10, "e2e4", false},
     };
-    // Decided positions: the engine's own move stands, whatever the dice (a won ending must still be won).
-    const std::map<std::string, UciInfo> won = {
-        {"a1a7", {6, false, 590}}, {"e5d6", {6, false, 600}}, {"e5f5", {6, false, 600}}, {"h1h8", {6, true, 2}}};
-    const std::map<std::string, UciInfo> lost = {{"e8d8", {6, false, -700}}, {"e8f8", {6, false, -720}}};
     for (const PickCase &c : picks) {
-        const Pick p = pickMove(c.engine, table, c.level, c.dice);
+        const Pick p = pickMove("e2e4", deep, {}, c.view, c.level, c.dice);
         const bool ok = p.move == c.move && p.mistake == c.mistake;
         std::cout << (ok ? "PASS " : "FAIL ") << "pick: " << c.name << ": " << p.move
                   << (p.mistake ? " (mistake)" : "") << "\n";
         if (!ok) ++failures;
     }
+    // Lapses (the hope view, margin 5) come first on the dice, then oversights: lapse 0.2, oversight 0.5. The hope view
+    // is the lure (f2f3 looks best when the reply isn't checked); the look is calm.
+    struct KindCase { std::string name; const std::map<std::string, UciInfo> &hope; double dice; std::string move;
+                      bool mistake; };
+    const KindCase kinds[] = {
+        {"lapse: the hanging move that looked best",  lure, 0.10, "f2f3", true},
+        {"oversight after the lapse's share",         lure, 0.30, "c2c4", false},   // (0.3 - 0.2) / 0.5 = 0.2: c2c4
+        {"neither: its own move",                     lure, 0.80, "e2e4", false},
+        {"a lapse without its view: its own move",    {},   0.10, "e2e4", false},
+    };
+    for (const KindCase &c : kinds) {
+        const Pick p = pickMove("e2e4", deep, c.hope, calm, {0.2, 0.5, 0.05}, c.dice);
+        const bool ok = p.move == c.move && p.mistake == c.mistake;
+        std::cout << (ok ? "PASS " : "FAIL ") << "pick: " << c.name << ": " << p.move
+                  << (p.mistake ? " (mistake)" : "") << "\n";
+        if (!ok) ++failures;
+    }
+    // The best-only share of the oversights (oversight 0.5, best 0.5, margin 5): the first half of the oversights' dice
+    // plays the look's best-looking move; the rest chooses among the near-best on its own stretch of the dice.
+    struct BestCase { std::string name; const std::map<std::string, UciInfo> &view; double best; double dice;
+                      std::string move; bool mistake; };
+    const BestCase bests[] = {
+        {"best only: the calm look's best",            calm, 1.0, 0.30, "c2c4", false},
+        {"best only: the lure's best, a mistake",      lure, 1.0, 0.30, "f2f3", true},
+        {"best share: inside it, the best",            calm, 0.5, 0.10, "c2c4", false},   // 0.2 of the oversights
+        {"best share: beyond it, the near-best pick",  calm, 0.5, 0.40, "d2d4", false},   // 0.8 -> (0.8-0.5)/0.5 = 0.6
+    };
+    for (const BestCase &c : bests) {
+        const Pick p = pickMove("e2e4", deep, {}, c.view, {0, 0.5, 0.05, c.best}, c.dice);
+        const bool ok = p.move == c.move && p.mistake == c.mistake;
+        std::cout << (ok ? "PASS " : "FAIL ") << "pick: " << c.name << ": " << p.move
+                  << (p.mistake ? " (mistake)" : "") << "\n";
+        if (!ok) ++failures;
+    }
+    const Pick missing = pickMove("h2h4", deep, {}, calm, {0, 0.5, 0.05}, 0.10);
+    const bool missingOk = missing.move == "h2h4" && !missing.mistake;
+    std::cout << (missingOk ? "PASS " : "FAIL ") << "pick: its own move not in the truth: its own move\n";
+    if (!missingOk) ++failures;
+    // Decided positions: the engine's own move stands, whatever the dice (a won ending must still be won).
+    const std::map<std::string, UciInfo> won = {
+        {"a1a7", {8, false, 590}}, {"e5d6", {8, false, 600}}, {"e5f5", {8, false, 600}}, {"h1h8", {8, true, 2}}};
+    const std::map<std::string, UciInfo> lost = {{"e8d8", {8, false, -700}}, {"e8f8", {8, false, -720}}};
     struct DecidedCase { std::string name; const std::map<std::string, UciInfo> &table; std::string engine; };
     const DecidedCase decided[] = {
         {"decided: a found mate is played",  won,  "h1h8"},
@@ -199,34 +249,11 @@ int main() {
         {"decided: lost (-7), its own move", lost, "e8d8"},
     };
     for (const DecidedCase &c : decided) {
-        const Pick p = pickMove(c.engine, c.table, {1.0, 0.45}, 0.99);   // level 1's loose pick, the dice at the end
+        const Pick p = pickMove(c.engine, c.table, c.table, c.table, {0.5, 0.4}, 0.01);   // the views = the truth
         const bool ok = p.move == c.engine && !p.mistake;
         std::cout << (ok ? "PASS " : "FAIL ") << "pick: " << c.name << ": " << p.move << "\n";
         if (!ok) ++failures;
     }
-    // The blunder chance (release_design.md 14, the calibration): with probability `blunder` a move losing 30+ points
-    // (here only f2f3), else the variety pick on the rest of the dice; no blunder on offer: the variety pick.
-    struct BlunderCase { std::string name; Fallibility level; double dice; std::string move; bool mistake; };
-    const BlunderCase blunders[] = {
-        {"blunder: inside its chance, the big loss",  {1.0, 0.02, 0.10}, 0.05, "f2f3", true},
-        {"blunder: outside it, the variety pick",     {1.0, 0.02, 0.10}, 0.50, "c2c4", false},
-        {"blunder: no chance, its own move",          {1.0, 0.0, 0.0},  0.05, "e2e4", false},
-    };
-    for (const BlunderCase &c : blunders) {
-        const Pick p = pickMove("e2e4", table, c.level, c.dice);
-        const bool ok = p.move == c.move && p.mistake == c.mistake;
-        std::cout << (ok ? "PASS " : "FAIL ") << "pick: " << c.name << ": " << p.move << "\n";
-        if (!ok) ++failures;
-    }
-    const std::map<std::string, UciInfo> calm = {{"d2d4", {6, false, 25}}, {"e2e4", {6, false, 30}}};
-    const Pick noBlunder = pickMove("e2e4", calm, {1.0, 0.02, 0.10}, 0.05);
-    const bool noBlunderOk = noBlunder.move == "e2e4" && !noBlunder.mistake;
-    std::cout << (noBlunderOk ? "PASS " : "FAIL ") << "pick: blunder: none on offer, the variety pick\n";
-    if (!noBlunderOk) ++failures;
-    const Pick none = pickMove("e2e4", {}, {1.0, 0.5}, 0.79);
-    const bool emptyOk = none.move == "e2e4" && !none.mistake;
-    std::cout << (emptyOk ? "PASS " : "FAIL ") << "pick: an empty table: its own move\n";
-    if (!emptyOk) ++failures;
 
     // --- hashSetting: at least 128 MB, within the engine's range, never lowered (engine_design.md) ----------------
     struct HashCase { std::string name; std::string line; std::string expected; };   // "none" = nothing to send

@@ -11,8 +11,8 @@
 <h1>The opponent and its strength</h1>
 <p>Your opponent is a chess engine: Buster, which comes with the app, or any other UCI engine you choose under Engine →
 Engines…. The slider in its strip sets its strength.</p>
-<p><strong>What the levels mean.</strong> Levels 1 to 9 are meant to play like <strong>human players</strong> of rising strength, and level 10 is
-the engine at full strength.</p>
+<p><strong>What the levels mean.</strong> Levels 1 to 10 are meant to play like <strong>human players</strong> of rising strength, and level 11
+is the engine at full strength.</p>
 <table border="1" cellspacing="0">
 <thead>
 <tr>
@@ -58,7 +58,11 @@ the engine at full strength.</p>
 <td>about 2200</td>
 </tr>
 <tr>
-<td>10 · Full strength</td>
+<td>10 · Master</td>
+<td>about 2400</td>
+</tr>
+<tr>
+<td>11 · Full strength</td>
 <td>the engine at full strength — far beyond human</td>
 </tr>
 </tbody>
@@ -67,17 +71,21 @@ the engine at full strength.</p>
 their order, but not their ratings, so the slider then shows the names only.</p>
 <p>Each level is meant to be a clear step up from the one below: if you beat a level about two games out of three, the
 next one is about right for you.</p>
-<p><strong>How a level plays.</strong> A real player doesn't lose because they think too little; they lose by <strong>mistakes</strong>: mostly
-small ones, and now and then a big one — a piece left hanging, a mate overlooked. The levels copy that:</p>
+<p><strong>How a level plays.</strong> A real player doesn't lose because they think too little; they lose by <strong>mistakes</strong>: a move
+that looked fine to them, punished by something they didn't see. How far a player sees is what their rating is
+about. The levels copy that:</p>
 <ul>
 <li>the engine <strong>thinks less</strong> at the lower levels, which gives it the small inaccuracies;</li>
-<li>and now and then it makes a <strong>real blunder on purpose</strong>, about as often as players of that rating do.
-When it does, the saved game marks the move with "?" and says what it should have played, and at Guided and Full
+<li>and each level has a <strong>horizon</strong>: how far ahead it looks when it judges a move. Now and then it plays the move that
+  looks best within its horizon instead of the engine's own choice. Usually that's a fine move; but when the position
+  hides a trap just beyond the horizon, it walks into it, as a player of that rating would. A beginner may leave a
+  piece where it can simply be taken; a 2200 player never does, but can miss a combination three moves deep.
+When it errs, the saved game marks the move with "?" and says what it should have played, and at Guided and Full
 coaching a card tells you "Buster slipped. There's something here." Spotting and punishing mistakes is a big part of
 getting better.</li>
 </ul>
 <p>It never blunders in a position that is already decided: a won ending is played out properly.</p>
-<p><strong>How the levels were made, honestly.</strong> The ratings are estimates, not promises. We measured how often lichess
+<p><strong>How the levels were made.</strong> The ratings are estimates, not promises. We measured how often lichess
 players of each rating make mistakes, and how big those mistakes are — about 3000 games for every rating band,
 analysed by a strong engine — and tuned each level until its mistakes looked like theirs. We also let the levels play
 each other, and Stockfish at known strengths, so that every step is about the same size. What we couldn't do is play

@@ -94,52 +94,61 @@ MoveQuality classifyMove(const UciInfo &best, const UciInfo &move, bool correct)
     return MoveQuality::Playable;
 }
 
-// The opponent's mistakes (release_design.md 14). Weights from the loss against the engine's own move, then the
-// dice walks through them: the engine's move first, then the table's (sorted) order.
-Pick pickMove(const std::string &engineMove, const std::map<std::string, UciInfo> &table, Fallibility level,
-              double dice) {
-    const auto own = table.find(engineMove);
-    if ((level.cap <= 0.0 && level.blunder <= 0.0) || own == table.end())
-        return {engineMove, false};                      // no mistakes at this level, or nothing to compare with
+// The moves of a view that look fine (within the margin of its best-looking move), and the dice's choice among them,
+// weighted 1 at the best falling to 0 at the margin, in the view's order ("" = none look fine, or an empty view).
+// margin 0: the best-looking move itself (the first of equals, in the view's order).
+static std::string pickFromView(const std::map<std::string, UciInfo> &deep, const std::map<std::string, UciInfo> &view,
+                                double margin, double dice) {
+    double best = 0.0;                                   // what looks best (only moves the deep table knows)
+    std::string bestMove;
+    for (const auto &[move, score] : view)
+        if (deep.count(move) && (bestMove.empty() || winChance(score) > best)) {
+            best = winChance(score);
+            bestMove = move;
+        }
+    if (margin <= 0.0)
+        return bestMove;
+    std::vector<std::pair<std::string, double>> weights;
+    double total = 0.0;
+    for (const auto &[move, score] : view) {
+        const double gap = best - winChance(score);
+        if (!deep.count(move) || gap >= margin)
+            continue;
+        weights.push_back({move, 1.0 - gap / margin});
+        total += weights.back().second;
+    }
+    double target = dice * total;                        // where the dice lands on the line of weights
+    for (const auto &[move, weight] : weights) {
+        if (target < weight)
+            return move;
+        target -= weight;
+    }
+    return "";                                           // dice = 1.0 exactly (or rounding), or nothing to pick
+}
+
+// The opponent's mistakes (release_design.md 14, two kinds). The dice first decides the kind (a lapse, an oversight,
+// or none), then which of that view's fine-looking moves.
+Pick pickMove(const std::string &engineMove, const std::map<std::string, UciInfo> &deep,
+              const std::map<std::string, UciInfo> &hope, const std::map<std::string, UciInfo> &look,
+              Fallibility level, double dice) {
+    static constexpr double lapseMargin = 0.05;          // a lapse: the moves that look best, without the reply
+    const auto own = deep.find(engineMove);
+    if (own == deep.end())
+        return {engineMove, false};                      // nothing to compare with
     const double base = winChance(own->second);
     if (base >= 0.95 || base <= 0.05)
         return {engineMove, false};                      // decided (a found mate, or 95 %+ either way): its own plan
-
-    // The blunder chance: the first `blunder` of the dice picks among the moves losing 30+ points (evenly); the rest
-    // of the dice, stretched back to 0..1, goes to the variety pick. No big loss on offer: the variety pick.
-    if (dice < level.blunder) {
-        std::vector<std::string> big;
-        for (const auto &[move, score] : table)
-            if (base - winChance(score) >= 0.30)
-                big.push_back(move);
-        const double stretched = dice / level.blunder;
-        if (!big.empty())
-            return {big[std::min(std::size_t(stretched * big.size()), big.size() - 1)], true};
-        dice = stretched;
-    } else {
-        dice = (dice - level.blunder) / (1.0 - level.blunder);
+    std::string move;
+    if (dice < level.lapse) {
+        move = pickFromView(deep, hope, lapseMargin, dice / level.lapse);
+    } else if (dice < level.lapse + level.oversight) {
+        const double share = (dice - level.lapse) / level.oversight;   // 0..1 within the oversights
+        move = share < level.best ? pickFromView(deep, look, 0.0, 0.0)  // trusts its best-looking move
+                                  : pickFromView(deep, look, level.margin, (share - level.best) / (1.0 - level.best));
     }
-
-    std::vector<std::pair<std::string, double>> weights {{engineMove, level.loyalty}};
-    for (const auto &[move, score] : table) {
-        if (move == engineMove || level.cap <= 0.0)
-            continue;                                    // no cap: no variety, its own move
-        const double loss = base - winChance(score);     // win-chance points lost against the engine's move
-        if (loss < level.cap)
-            weights.push_back({move, loss <= 0.0 ? 1.0 : 1.0 - loss / level.cap});
-    }
-    double total = 0.0;
-    for (const auto &[move, weight] : weights)
-        total += weight;
-    double target = dice * total;                        // where the dice lands on the line of weights
-    for (const auto &[move, weight] : weights) {
-        if (target < weight) {
-            const bool mistake = classifyMove(own->second, table.at(move), false) == MoveQuality::Bad;
-            return {move, mistake};
-        }
-        target -= weight;
-    }
-    return {engineMove, false};                          // dice = 1.0 exactly (or rounding): the engine's move
+    if (move.empty())
+        return {engineMove, false};                      // no mistake this move (or its view is empty)
+    return {move, classifyMove(own->second, deep.at(move), false) == MoveQuality::Bad};
 }
 
 std::optional<CommonReply> commonReply(const std::vector<std::string> &replies) {

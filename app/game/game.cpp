@@ -21,23 +21,30 @@
 // The strength levels, calibrated for the built-in Buster 7.0.2 (release_design.md 14: 5 rounds of autoplay, every
 // game re-analysed by Stockfish, the mistakes matched to lichess rapid players of each rating; 2026-10-28).
 // Nodes per level (index = level; ~x2.2 a level): the quality of the ordinary moves, and so the steps between levels.
-// Level 10 = full strength: no node limit.
-static const long long levelNodes[] = {0, 1500, 3300, 7000, 15000, 33000, 70000, 150000, 330000, 700000};
+// Level 11 = full strength: no node limit. Level 10 (≈ 2400) added 2026-11-04 (Anders: a step between 2200 and full
+// strength): its node limit one more x2.2, to be confirmed by the calibration.
+static constexpr int fullStrength = 11;
+static const long long levelNodes[] = {0, 1500, 3300, 7000, 15000, 33000, 70000, 150000, 330000, 700000, 1500000};
 
-// The opponent's mistakes per level: {loyalty, cap, blunder}. loyalty: the weight of the engine's own move (rising
-// smoothly: a jump in loyalty is a jump in strength); cap: the variety pick's biggest loss, in win-chance points;
-// blunder: the chance per move of a big blunder (30+ points), as humans make them. Matched levels 1-9 to lichess
-// players of ~1000, 1150, 1300, 1450, 1600, 1750, 1900, 2050, 2200 (red moves per 100 within ~1.5); none at full
-// strength.
-static const Fallibility levelFallibility[] = {
-    {1, 0, 0},                                                                   // [0] unused
-    {1.5, 0.14, 0.150}, {2, 0.12, 0.130}, {3, 0.12, 0.110}, {3.5, 0.12, 0.100}, {4, 0.12, 0.090},
-    {5, 0.10, 0.080}, {8, 0.09, 0.072}, {11, 0.08, 0.065}, {11, 0.07, 0.055},
-    {1, 0, 0}};                                                                  // [10] full strength: none
+// The opponent's mistakes per level (release_design.md 14, two kinds of human mistakes, 2026-11-04):
+// {horizon, {lapse, oversight, margin, best}}. A lapse: it plays from the "hope" view (didn't check the reply: can hang
+// a piece), levels 1-3 only (Anders: big blunders only there). An oversight: from a short look of `horizon` plies after
+// its move (every capture seen, a quiet resource not): `best` of them play its best-looking move (the stronger, the more
+// it trusts it), the rest choose among the moves within `margin` of it. Otherwise the engine's own move. The chances per
+// move; mistakes only where the view hides a trap. Matched to lichess players of ~1000 ... 2400 (red moves per 100 in
+// undecided positions; tools/pickcheck, 600 positions): START VALUES until the calibration games. None at full strength.
+struct OpponentLevel { int horizon; Fallibility fallibility; };
+static const OpponentLevel opponentLevels[] = {
+    {0, {}},                                                                              // [0] unused
+    {1, {0.22, 0.25, 0.15, 0.25}}, {1, {0.20, 0.22, 0.15, 0.25}}, {1, {0.02, 0.98, 0.15, 0.25}},   // 1000 1150 1300
+    {1, {0.00, 1.00, 0.15, 0.25}}, {1, {0.00, 0.89, 0.15, 0.25}}, {1, {0.00, 0.95, 0.15, 0.50}},   // 1450 1600 1750
+    {1, {0.00, 0.85, 0.15, 0.50}}, {1, {0.00, 0.73, 0.15, 0.50}}, {1, {0.00, 0.73, 0.15, 0.75}},   // 1900 2050 2200
+    {1, {0.00, 0.55, 0.15, 0.75}},                                                                  // 2400
+    {0, {}}};                                                                             // [11] full strength: none
 
 // How deep the opponent follows the opening book, per level (plies from the standard start; the book holds 14): a
 // weak opponent leaves the book early, as a weak player would. openings_design.md "The opponent plays from the book".
-static const int bookPlies[] = {0, 2, 4, 6, 8, 10, 12, 14, 14, 14, 14};
+static const int bookPlies[] = {0, 2, 4, 6, 8, 10, 12, 14, 14, 14, 14, 14};
 
 // Buster never answers faster than this: time to see its move coming. A first, fixed version of the
 // "human mimic" idea (todo: per level, varying).
@@ -106,13 +113,16 @@ void Game::playPicked(const QString &engineMove) {
     m_lastPickMistake = false;
     m_lastEngineMove = engineMove;
     QString move = engineMove;
-    if (levelFallibility[std::min(m_level, 10)].cap > 0.0) {
-        const Pick pick = pickMove(engineMove.toStdString(), m_opponentTable, levelFallibility[std::min(m_level, 10)],
+    const Fallibility fallibility = opponentLevels[std::min(m_level, fullStrength)].fallibility;
+    if (fallibility.lapse + fallibility.oversight > 0.0) {
+        const Pick pick = pickMove(engineMove.toStdString(), m_opponentTable, m_opponentHope, m_opponentLook, fallibility,
                                    QRandomGenerator::global()->generateDouble());
         move = QString::fromStdString(pick.move);
         m_lastPickMistake = pick.mistake;
     }
     m_opponentTable.clear();           // used: the next turn needs a new one
+    m_opponentHope.clear();
+    m_opponentLook.clear();
     const long long wait = courtesyMs - (m_time.elapsed() - m_thinkStart);
     if (wait <= 0) {
         playEngineMove(move);          // it thought long enough
@@ -275,16 +285,20 @@ void Game::requestEngineMove() {
 
     QString command = "position fen " + m_startFen;
     m_opponentTable.clear();                        // a new turn: an old table belongs to another position
-    m_tableRequested = levelFallibility[std::min(m_level, 10)].cap > 0.0;
+    m_opponentHope.clear();
+    m_opponentLook.clear();
+    const OpponentLevel &level = opponentLevels[std::min(m_level, fullStrength)];
+    m_tableRequested = level.fallibility.lapse + level.fallibility.oversight > 0.0;
     if (m_tableRequested)                           // the engine thinks: the coach scores its moves for the pick
-        emit opponentTurnStarted(m_startFen, m_moves, m_position);
+        emit opponentTurnStarted(m_startFen, m_moves, m_position, level.fallibility.lapse > 0.0,
+                                 level.fallibility.oversight > 0.0 ? level.horizon : 0);
     if (!m_moves.isEmpty())
         command += " moves " + m_moves.join(' ');
     m_engine->send(command);
     m_thinkStart = m_time.elapsed();   // the courtesy pause counts from here
     const int search = ++m_searchCount;   // this search's number (the cap below checks it)
     // Below full strength: a node limit (the same strength on any computer). Full strength: none.
-    const QString nodes = (m_level < 10) ? QString(" nodes %1").arg(levelNodes[m_level]) : QString();
+    const QString nodes = (m_level < fullStrength) ? QString(" nodes %1").arg(levelNodes[m_level]) : QString();
     if (m_timed) {   // the engine manages its own time from the real clocks (ms); the node limit on top
         const long long now = m_time.elapsed();
         m_engine->send(QString("go wtime %1 btime %2 winc %3 binc %3")
@@ -293,8 +307,8 @@ void Game::requestEngineMove() {
     } else {         // untimed: the node limit alone, or at full strength a virtual clock
         // Full strength: a virtual 5-minute clock, fresh every move (release_design.md 14): the engine's own time
         // management spends it where it matters (Buster: ~10 s on average, never more than 45 s).
-        m_engine->send(m_level < 10 ? "go" + nodes : QString("go wtime %1 btime %1").arg(virtualClockMs));
-        if (m_level >= 10)                 // the cap (release_design.md 14): stopped at 60 s, the best move so far played
+        m_engine->send(m_level < fullStrength ? "go" + nodes : QString("go wtime %1 btime %1").arg(virtualClockMs));
+        if (m_level >= fullStrength)                 // the cap (release_design.md 14): stopped at 60 s, the best move so far played
             QTimer::singleShot(maxThinkMs, this, [this, search]() {
                 if (search == m_searchCount)
                     playNow();             // still this search (playNow does nothing if it has already answered)
@@ -310,7 +324,7 @@ QString Game::bookMove() {
     if (!m_book)
         return "";
     const int ply = 2 * (m_position.fullmove_number - 1) + (m_position.pit ? 1 : 0);   // 0 = White's first move
-    const int last = int(std::size(bookPlies)) - 1;   // levels beyond the table (11, 12 later) use its last value
+    const int last = int(std::size(bookPlies)) - 1;   // a level beyond the table uses its last value
     if (m_practiceName.isEmpty() && ply >= bookPlies[std::min(m_level, last)])   // practice: the opening decides
         return "";                     // deeper than this level knows: the engine decides
     std::vector<BookMove> moves = m_book->moves(m_model.Key(m_position));
@@ -629,8 +643,11 @@ void Game::addOpponentTime(long long ms) {
     m_clock.addTime(!m_humanIsWhite, ms);   // the clocks redraw on their 100 ms tick
 }
 
-void Game::setOpponentTable(const std::map<std::string, UciInfo> &table) {
+void Game::setOpponentTable(const std::map<std::string, UciInfo> &table, const std::map<std::string, UciInfo> &hope,
+                            const std::map<std::string, UciInfo> &look) {
     m_opponentTable = table;
+    m_opponentHope = hope;
+    m_opponentLook = look;
     if (!m_heldMove.isEmpty()) {       // the engine was faster: its move waited for this
         const QString move = m_heldMove;
         m_heldMove.clear();

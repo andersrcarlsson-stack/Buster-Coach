@@ -31,7 +31,8 @@ signals:
     // The threat move if ignoring it would be a red move, "" if there's no direct threat.
     void threatJudged(const QString &move);
 
-    // The opponent's turn: all its moves are scored (one pass, depth 6): opponentTable() is complete.
+    // The opponent's turn: all its moves are scored, as it sees them and as they are: opponentView() and
+    // opponentTable() are complete.
     void opponentTableReady();
 
 public:
@@ -42,8 +43,12 @@ public slots:
     // --- Slots: the turn, attention --------------------------------------------------------------
     // From Game: the human is to move. Analyse their possible moves.
     void onHumanTurnStarted(const QString &startFen, const QStringList &moves, const Position::Chess &position);
-    // From Game: the opponent's engine thinks. Score the OPPONENT's moves once, for its pick (release_design.md 14).
-    void onOpponentTurnStarted(const QString &startFen, const QStringList &moves, const Position::Chess &position);
+    // From Game: the opponent's engine thinks. Score the OPPONENT's moves for its pick (release_design.md 14, two
+    // kinds of mistakes): as it sees them in a lapse (hope: the position after the move with the other side passing,
+    // depth 1) and in an oversight (a short look: the engine's depth after the move, horizon > 0), whichever the level
+    // uses, then as they are (depth 8).
+    void onOpponentTurnStarted(const QString &startFen, const QStringList &moves, const Position::Chess &position,
+                               bool hope, int horizon);
     void cancel(); // drop the queue; stop a running search
     void engineRestarted();   // the coach engine was restarted: forget the old process, wait for its "ready"
     // From the board: the move under the box ("" = none). Deepened next, even a bad move.
@@ -61,8 +66,11 @@ public:
     // The scores found so far in this turn (move -> score, human's view). Empty at the start of a turn.
     const QHash<QString, UciInfo> &scores() const { return m_scores; }
     
-    // The opponent's moves this turn (move -> score, the OPPONENT's view), in the type pickMove takes.
+    // The opponent's moves this turn (move -> score, the OPPONENT's view), in the type pickMove takes: as they are
+    // (depth 8), and as the opponent sees them in a lapse (hope) and in an oversight (look); empty when not used.
     const std::map<std::string, UciInfo> &opponentTable() const { return m_opponentTable; }
+    const std::map<std::string, UciInfo> &opponentHope() const { return m_opponentHope; }
+    const std::map<std::string, UciInfo> &opponentLook() const { return m_opponentLook; }
 
     // The strongest line after this move, in SAN, starting with the opponent's reply, at most maxPlies long
     // (e.g. "12... Bg4 13. e3 Bxf3"). "" if the move isn't scored or has no line (a game-ending move).
@@ -105,8 +113,16 @@ private:
     bool m_searching = false;   // a "go" is running (between go and its bestmove)
     int m_staleBestMoves = 0;  // bestmoves still to come from cancelled searches: skip them
     QHash<QString, UciInfo> m_scores;   // this turn's results so far
-    bool m_forOpponent = false;         // this turn's work scores the opponent's moves (one pass, no threat)
-    std::map<std::string, UciInfo> m_opponentTable;   // ... into here; m_scores (yours) stays untouched
+    bool m_forOpponent = false;         // this turn's work scores the opponent's moves (no threat, no passes)
+    std::map<std::string, UciInfo> m_opponentTable;   // ... as they are (depth 8); m_scores (yours) stays untouched
+    std::map<std::string, UciInfo> m_opponentHope;    // ... as the opponent sees them in a lapse (no reply)
+    std::map<std::string, UciInfo> m_opponentLook;    // ... and in an oversight (a short look)
+    // One search of the opponent's work: the move, the position searched, its depth, the table it fills, and whose
+    // score the engine reports (the "hope" view: the mover is to move again, so its score isn't negated).
+    struct OpponentSearch { QString move; QString position; int depth = 0; std::map<std::string, UciInfo> *table = nullptr;
+                            bool moverToMove = false; };
+    QList<OpponentSearch> m_opponentQueue;
+    OpponentSearch m_opponentSearch;    // the one running
     QStringList m_moves;   // all the human's legal moves this turn (each pass refills the queue from it)
     int m_depth = 6;       // the depth of the current pass
     QString m_masterMove;  // the master coach's best move this turn ("" = none yet)

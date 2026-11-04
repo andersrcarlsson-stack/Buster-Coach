@@ -44,8 +44,10 @@ public:
     void resign();                  // you resign: the game ends ("You resigned: Stockfish wins.")
     void lose(const QString &text);  // the game ends as your loss, in these words (resigning; a 2nd illegal move)
     void addOpponentTime(long long ms);   // a bonus on the opponent's clock (Tournament: your illegal move)
-    // From the coach (via the window): the opponent's moves scored this turn, for its pick (release_design.md 14).
-    void setOpponentTable(const std::map<std::string, UciInfo> &table);
+    // From the coach (via the window): the opponent's moves scored this turn, for its pick (release_design.md 14): as
+    // they are, and as the opponent sees them in a lapse and in an oversight.
+    void setOpponentTable(const std::map<std::string, UciInfo> &table, const std::map<std::string, UciInfo> &hope,
+                          const std::map<std::string, UciInfo> &look);
     void playNow();                 // the opponent stops thinking and plays the move it has so far
     void agreeDraw();               // a draw offer accepted: the game ends ("Draw agreed.")
 
@@ -88,7 +90,7 @@ public:
     bool staysInside(const std::string &uci);
 
     // --- Strength and time control ---------------------------------------------------------------
-    // The opponent's strength: 1 (easiest) .. 10 (full strength). Used from the engine's next move on.
+    // The opponent's strength: 1 (easiest) .. 11 (full strength). Used from the engine's next move on.
     void setLevel(int level) { m_level = level; }
 
     // The time control (from the Time menu): untimed, or minutes + increment. Applies at once if no move
@@ -139,8 +141,10 @@ signals:
     void movesTakenBack(int plies);
 
     // The opponent's engine is asked for a move (not a book or practice move): the coach can score the opponent's
-    // moves meanwhile, for its pick (release_design.md 14). Like humanTurnStarted, but for the other side.
-    void opponentTurnStarted(const QString &startFen, const QStringList &moves, const Position::Chess &position);
+    // moves meanwhile, for its pick (release_design.md 14). Like humanTurnStarted, but for the other side. hope: the
+    // level makes lapses (score the moves blind to the reply); horizon: its oversights' short look (0 = none).
+    void opponentTurnStarted(const QString &startFen, const QStringList &moves, const Position::Chess &position,
+                             bool hope, int horizon);
 
 private slots:
     void onUserMove(const QString &move); // from BoardWidget::moveMade
@@ -227,8 +231,10 @@ private:
     int m_level = 5;                // the opponent's strength (first run: the middle level)
 
     std::map<std::string, UciInfo> m_opponentTable;   // this turn's scored opponent moves (empty = not yet)
+    std::map<std::string, UciInfo> m_opponentHope;    // ... as the opponent sees them in a lapse
+    std::map<std::string, UciInfo> m_opponentLook;    // ... and in an oversight
     QString m_heldMove;              // the engine's move, held until the table is there ("" = none held)
-    bool m_tableRequested = false;   // this turn the coach was asked for the opponent's table (the level has a cap)
+    bool m_tableRequested = false;   // this turn the coach was asked for the opponent's table (the level makes mistakes)
     bool m_lastPickMistake = false;  // the opponent's last move was a mistake on purpose (for the card and the PGN)
     QString m_lastEngineMove;        // the engine's own move behind the last pick (the PGN's "Best was")   
     void playPicked(const QString &engineMove);   // the pick, the courtesy pause, then playEngineMove

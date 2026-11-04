@@ -12,9 +12,10 @@ you when something is wrong.
 - **Ask, don't be told.** H gives a hint (the piece, then where it goes; hints are counted). T asks what the opponent
   threatens. Your hanging pieces get a red "!".
 - **Choose how much help you want:** Tournament (none, and its rules: no takebacks), Play, Guided, or Full coaching.
-- **An opponent that plays like a person.** Ten strengths, from 1 · Beginner to 10 · Full strength. The weaker levels
-  make the kind of mistakes players of that rating make (matched to error rates from lichess games), not random
-  blunders.
+- **An opponent that plays like a person.** Eleven strengths, from 1 · Beginner (≈ 1000) through 10 · Master
+  (≈ 2400) to 11 · Full strength. Each level has a horizon, how far it looks, and makes only the mistakes a player of
+  that rating could make: a trap beyond its horizon, never a random blunder. Their frequency is matched to error rates
+  from lichess games.
 - **After the game:** a win-chance graph with your mistakes marked, the move list with "?" and "!", the coach's
   comments, and your own notes. Every game is saved as PGN, and any PGN file can be opened and played on from any move.
 - **Openings:** the name of the opening you're in, a book of what people really play, and opening practice: choose an
@@ -51,8 +52,8 @@ and plays as both the opponent and the coach.
 ## Other engines
 
 Any UCI engine can be the opponent or the coach: Engine → Engines…, Add…. The app tests an engine before it uses it.
-The ten strength levels and their ratings are calibrated for the built-in Buster; with another engine the levels
-still work, but the ratings aren't shown.
+The strength levels and their ratings are calibrated for the built-in Buster; with another engine the levels still
+work, but the ratings aren't shown.
 
 ## Feedback
 
