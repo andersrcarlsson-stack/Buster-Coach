@@ -14,7 +14,7 @@ permissions:
 env:
   QT_VERSION: '6.4.2'         # Linux
   QT_VERSION_WINDOWS: '6.8.3' # Windows: the long-term Qt (under Wine, 6.4.2's engines went silent mid-game)
-  BUSTER_VERSION: '7.0.3'
+  BUSTER_VERSION: '7.0.4'
   BUSTER_URL: https://github.com/andersrcarlsson-stack/Buster-Chess/releases/download
 
 jobs:

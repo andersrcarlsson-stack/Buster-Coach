@@ -5,6 +5,7 @@
 
 #pragma once
 #include <QObject>
+#include <QTimer>
 #include <QStringList>
 #include <QHash>
 #include <map>
@@ -111,6 +112,10 @@ private:
     QStringList m_queue;  // the human's moves still to score
     void scoreNext();  // start the next move in the queue, or report that all are done
     bool m_searching = false;   // a "go" is running (between go and its bestmove)
+    // Every search has a time cap as well as a depth (2026-11-05: in a won endgame against a checking queen one
+    // "go depth 14" of Buster 7.0.3 ran for minutes): past it, "stop", and the deepest result so far is the answer.
+    QTimer m_searchCap;
+    void startSearch(const QString &position, int depth, int capMs);   // position + go depth + the cap
     int m_staleBestMoves = 0;  // bestmoves still to come from cancelled searches: skip them
     QHash<QString, UciInfo> m_scores;   // this turn's results so far
     bool m_forOpponent = false;         // this turn's work scores the opponent's moves (no threat, no passes)

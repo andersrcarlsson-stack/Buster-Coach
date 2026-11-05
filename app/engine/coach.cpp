@@ -27,6 +27,11 @@ static const QString passMove = "0000";
 // The opponent's moves as they really are (the pick by horizon): deeper than any level's view (the top levels see
 // depth 4), so a trap beyond the view shows.
 static const int opponentDeepDepth = 8;
+// The time cap on one search (Buster Coach's own guard against an engine's search blowing up in some position): your
+// moves' and the threat's searches, and the opponent's (each of its many short searches; the pick waits for them all).
+// Normal searches end far sooner; a capped one keeps the deepest score it reached.
+static const int searchCapMs = 5000;
+static const int opponentSearchCapMs = 2000;
 
 
 // =================================================================================================
@@ -38,6 +43,11 @@ Coach::Coach(Engine *engine, QObject *parent)
     connect(m_engine, &Engine::infoReceived, this, &Coach::onInfo);
     connect(m_engine, &Engine::bestMove, this, &Coach::onBestMove);
     connect(m_engine, &Engine::ready, this, &Coach::onEngineReady);
+    m_searchCap.setSingleShot(true);
+    connect(&m_searchCap, &QTimer::timeout, this, [this]() {
+        if (m_searching)
+            m_engine->send("stop");   // its bestmove still comes, and is this search's answer (onBestMove)
+    });
 }
 
 // =================================================================================================
@@ -93,6 +103,8 @@ void Coach::onHumanTurnStarted(const QString &startFen, const QStringList &moves
 void Coach::onOpponentTurnStarted(const QString &startFen, const QStringList &moves, const Position::Chess &position,
                                   bool hope, int horizon) {
     cancel();
+    const bool afterYourTurn = !m_forOpponent;   // the scores in m_scores are your last turn's, from m_prefix
+    const QString yourPrefix = m_prefix;
     m_forOpponent = true;
     m_prefix = "position fen " + startFen + " moves ";
     if (!moves.isEmpty())
@@ -100,6 +112,18 @@ void Coach::onOpponentTurnStarted(const QString &startFen, const QStringList &mo
     m_opponentTable.clear();
     m_opponentHope.clear();
     m_opponentLook.clear();
+    // A decided position (2026-11-05): your move, just played, is already a found mate or 95 %+ either way. The pick
+    // plays the engine's own move there anyway, so the work would be thrown away, and such positions (one side
+    // throwing checks) are where an engine's search tends to blow up. Empty tables now: the engine's move.
+    if (afterYourTurn && !moves.isEmpty() && yourPrefix + moves.last() + " " == m_prefix
+        && m_scores.contains(moves.last())) {
+        const UciInfo yours = m_scores.value(moves.last());
+        const double chance = winChance(yours);
+        if (yours.mate || chance >= 0.95 || chance <= 0.05) {
+            emit opponentTableReady();
+            return;
+        }
+    }
     m_opponentQueue.clear();
     QList<OpponentSearch> deep;
     Moves mover;
@@ -156,6 +180,7 @@ void Coach::onBestMove(const QString &) {
         return;
     }
     m_searching = false;
+    m_searchCap.stop();
     UciInfo score = m_lastInfo;
     score.score = -score.score;
     if (m_forOpponent) {                  // the opponent's move: into its view or its truth (first: m_current is yours)
@@ -191,9 +216,7 @@ void Coach::scoreNext() {
             return;
         }
         m_opponentSearch = m_opponentQueue.takeFirst();
-        m_engine->send(m_opponentSearch.position);
-        m_engine->send("go depth " + QString::number(m_opponentSearch.depth));
-        m_searching = true;
+        startSearch(m_opponentSearch.position, m_opponentSearch.depth, opponentSearchCapMs);
         return;
     }
     if (m_queue.isEmpty()) {
@@ -222,12 +245,19 @@ void Coach::scoreNext() {
             m_queue.prepend(passMove);   // the threat again, at this pass's depth: step 3 compares like with like
     }
     m_current = m_queue.takeFirst();
-    if (m_current == passMove)
-        m_engine->send(m_passPosition);          // the pass: the opponent to move again
-    else
-        m_engine->send(m_prefix + m_current);   // the position AFTER the human's candidate move
-    m_engine->send("go depth " + QString::number(m_depth));
+    startSearch(m_current == passMove ? m_passPosition          // the pass: the opponent to move again
+                                      : m_prefix + m_current,   // the position AFTER the human's candidate move
+                m_depth, searchCapMs);
+}
+
+// One search: the position, "go depth", and the time cap. The info lines start afresh (a stopped search reports
+// the deepest score it reached, never the previous search's).
+void Coach::startSearch(const QString &position, int depth, int capMs) {
+    m_lastInfo = UciInfo{};
+    m_engine->send(position);
+    m_engine->send("go depth " + QString::number(depth));
     m_searching = true;
+    m_searchCap.start(capMs);
 }
 
 // Drop all pending work. A running search is stopped; its bestmove (UCI: it still comes) is skipped.
@@ -239,6 +269,7 @@ void Coach::cancel() {
         ++m_staleBestMoves;
         m_searching = false;
     }
+    m_searchCap.stop();
 }
 
 // =================================================================================================
@@ -649,4 +680,5 @@ void Coach::engineRestarted() {
     m_engineReady = false;      // the queue waits for the new process's "ready" (onEngineReady starts it)
     m_searching = false;        // the old search died with the old process ...
     m_staleBestMoves = 0;       // ... so no bestmove from it will come to be skipped
+    m_searchCap.stop();
 }

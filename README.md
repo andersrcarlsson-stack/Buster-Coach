@@ -53,6 +53,9 @@ Any UCI engine can be the opponent or the coach: Engine → Engines…, Add…. 
 The strength levels and their ratings are calibrated for the built-in Buster; with another engine the levels still
 work, but the ratings aren't shown.
 
+How it all works — the coach's rules, the opponent's human mistakes and their calibration, and the story behind
+Buster Coach: [HOW_IT_WORKS.md](HOW_IT_WORKS.md).
+
 ## Feedback
 
 This is the first release. **How do the strength levels feel to you?** Too easy, too hard, a level that plays

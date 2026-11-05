@@ -234,6 +234,7 @@ private:
     std::map<std::string, UciInfo> m_opponentHope;    // ... as the opponent sees them in a lapse
     std::map<std::string, UciInfo> m_opponentLook;    // ... and in an oversight
     QString m_heldMove;              // the engine's move, held until the table is there ("" = none held)
+    bool m_tableArrived = false;     // the coach's answer came this turn (its table may be empty: a decided position)
     bool m_tableRequested = false;   // this turn the coach was asked for the opponent's table (the level makes mistakes)
     bool m_lastPickMistake = false;  // the opponent's last move was a mistake on purpose (for the card and the PGN)
     QString m_lastEngineMove;        // the engine's own move behind the last pick (the PGN's "Best was")   

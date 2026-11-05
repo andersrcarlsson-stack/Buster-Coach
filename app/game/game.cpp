@@ -101,7 +101,7 @@ void Game::onEngineMove(const QString &move) {
         return;
     }
     m_engineThinking = false;          // the search is over: a cancel now has nothing to stop
-    if (m_tableRequested && m_opponentTable.empty()) {
+    if (m_tableRequested && !m_tableArrived) {
         m_heldMove = move;             // the pick needs the coach's table: wait for setOpponentTable
         return;
     }
@@ -288,6 +288,7 @@ void Game::requestEngineMove() {
     m_opponentHope.clear();
     m_opponentLook.clear();
     const OpponentLevel &level = opponentLevels[std::min(m_level, fullStrength)];
+    m_tableArrived = false;
     m_tableRequested = level.fallibility.lapse + level.fallibility.oversight > 0.0;
     if (m_tableRequested)                           // the engine thinks: the coach scores its moves for the pick
         emit opponentTurnStarted(m_startFen, m_moves, m_position, level.fallibility.lapse > 0.0,
@@ -648,6 +649,7 @@ void Game::setOpponentTable(const std::map<std::string, UciInfo> &table, const s
     m_opponentTable = table;
     m_opponentHope = hope;
     m_opponentLook = look;
+    m_tableArrived = true;
     if (!m_heldMove.isEmpty()) {       // the engine was faster: its move waited for this
         const QString move = m_heldMove;
         m_heldMove.clear();

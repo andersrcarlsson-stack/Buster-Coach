@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.1 — the coach never waits on a stuck search
+
+- **The coach keeps going when an engine's search gets stuck.** In some positions, typically a won endgame where the
+  losing side has a long run of checks, a single engine search could run for minutes: the confidence dot stayed
+  yellow, the hint stayed greyed out, and the opponent's move could be delayed. Now every coach search has a time
+  limit (it keeps the deepest result reached), the opponent no longer waits for coach work it doesn't need once the
+  game is decided, and the hint comes after a few seconds even when the deepest search is slow.
+- **Buster 7.0.4 built in:** mate scores count down steadily (no more "mate in 6" and back between depths). The
+  same strength as 7.0.3, so the levels and their ratings are unchanged.
+- **HOW_IT_WORKS.md:** how the coach and the opponent work, and the story behind Buster Coach.
+
 ## 1.0.0 — the first release
 
 A chess opponent with a coach beside you: the coloured box and its reasons, hints, the threat, hanging pieces, the

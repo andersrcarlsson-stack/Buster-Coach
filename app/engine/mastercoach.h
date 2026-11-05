@@ -3,6 +3,7 @@
 
 #pragma once
 #include <QObject>
+#include <QTimer>
 #include <QStringList>
 #include "uci_info.h"
 
@@ -36,6 +37,11 @@ private:
     int m_staleBestMoves = 0;    // bestmoves still to come from stopped searches: skip them
     bool m_engineReady = false;  // the uci/isready handshake is done
     void startSearch();          // send m_pending + "go infinite"
+    // A slow search (2026-11-05: Buster 7.0.3 needs many seconds for depth 10 in some endgames, and the hint waited):
+    // after slowAfterMs the master speaks from slowMinDepth on. m_latest: the deepest usable line so far.
+    QTimer m_slowTimer;
+    bool m_slow = false;
+    UciInfo m_latest;
     void onInfo(const UciInfo &info);
     void onBestMove(const QString &);
     void onEngineReady();
