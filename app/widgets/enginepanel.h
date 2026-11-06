@@ -28,6 +28,11 @@ public:
     void open(const QString &message = QString());
     // The engine that ships with the app (MainWindow::bundledEngine; "" = none): always in the library.
     void setBuiltIn(const QString &path) { m_builtIn = path; }
+    // A saved engine value as a file for this run. The built-in Buster is saved as builtInWord, not as its path (an
+    // AppImage unpacks itself to a new folder every run); an older app's saved built-in (a /tmp/.mount_ path whose
+    // file is gone) counts as the built-in too. "" = no such engine.
+    static QString resolve(const QString &saved, const QString &builtIn);
+    static inline const QString builtInWord = QStringLiteral("builtin");
 
 private:
     struct EngineEntry {                          // one engine in the library

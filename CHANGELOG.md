@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.2 — the AppImage remembers its engine
+
+- **The Linux AppImage no longer opens the engine page on every start.** An AppImage unpacks itself to a new folder
+  each time it runs, and the app saved the built-in Buster by that folder's path, which was gone by the next start.
+  The built-in Buster is now remembered as itself, wherever the app runs from. Settings left by 1.0.0 and 1.0.1 are
+  read correctly, and their extra copies of Buster in the engine list disappear. Windows was not affected.
+
 ## 1.0.1 — the coach never waits on a stuck search
 
 - **The coach keeps going when an engine's search gets stuck.** In some positions, typically a won endgame where the

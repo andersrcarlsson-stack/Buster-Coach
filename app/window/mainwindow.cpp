@@ -233,9 +233,10 @@ void MainWindow::start() {
     });
 }
 
-// A role's engine file as last chosen on the engine page; never chosen: the built-in Buster ("" = none of them).
+// A role's engine file as last chosen on the engine page (the word "builtin" and old AppImage paths: the built-in
+// Buster, EnginePanel::resolve); never chosen: the built-in Buster ("" = none of them).
 QString MainWindow::savedEngine(const char *key) {
-    const QString chosen = QSettings().value(key).toString();
+    const QString chosen = EnginePanel::resolve(QSettings().value(key).toString(), bundledEngine());
     return chosen.isEmpty() ? bundledEngine() : chosen;
 }
 

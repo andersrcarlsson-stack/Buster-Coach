@@ -209,15 +209,29 @@ void EnginePanel::showWhy() {
     m_status->setText(lines.isEmpty() ? entry.name + " is ready for both roles." : lines.join('\n'));
 }
 
+QString EnginePanel::resolve(const QString &saved, const QString &builtIn) {
+    if (saved == builtInWord)
+        return builtIn;
+    if (saved.startsWith("/tmp/.mount_") && !QFileInfo::exists(saved))
+        return builtIn;
+    return saved;
+}
+
 // QSettings keys: engines/library (an array: path, name, and per role the verdict and its reason), engines/opponent and
-// engines/coach (the chosen engines' paths). Cancel saves nothing: the next open() reads the last saved state.
+// engines/coach (the chosen engines' paths; the built-in Buster as the word builtInWord, see resolve). Cancel saves
+// nothing: the next open() reads the last saved state.
 void EnginePanel::open(const QString &message) {
     QSettings settings;
     m_library.clear();
     const int count = settings.beginReadArray("engines/library");   // how many were written
     for (int i = 0; i < count; ++i) {
         settings.setArrayIndex(i);
-        m_library.append({settings.value("path").toString(), settings.value("name").toString(),
+        const QString path = resolve(settings.value("path").toString(), m_builtIn);
+        const bool seen = std::any_of(m_library.cbegin(), m_library.cend(),
+                                      [&path](const EngineEntry &entry) { return entry.path == path; });
+        if (path.isEmpty() || seen)
+            continue;                                   // no such engine, or an old built-in copy already listed
+        m_library.append({path, settings.value("name").toString(),
                           {static_cast<Fitness>(settings.value("coach").toInt()),
                            settings.value("coachReason").toString().toStdString()},
                           {static_cast<Fitness>(settings.value("opponent").toInt()),
@@ -233,7 +247,7 @@ void EnginePanel::open(const QString &message) {
     showLibrary();
     showRoles();
     for (auto [combo, key] : {std::pair{m_opponent, "engines/opponent"}, {m_coach, "engines/coach"}}) {
-        const int index = combo->findData(settings.value(key).toString());
+        const int index = combo->findData(resolve(settings.value(key).toString(), m_builtIn));
         if (index >= 0)
             combo->setCurrentIndex(index);              // the remembered choice, if it's still offered
     }
@@ -243,11 +257,12 @@ void EnginePanel::open(const QString &message) {
 
 void EnginePanel::save() {
     QSettings settings;
+    settings.remove("engines/library");                 // a shorter list leaves no old entries behind
     settings.beginWriteArray("engines/library", m_library.size());
     for (int i = 0; i < m_library.size(); ++i) {
         const EngineEntry &entry = m_library[i];
         settings.setArrayIndex(i);
-        settings.setValue("path", entry.path);
+        settings.setValue("path", entry.path == m_builtIn ? builtInWord : entry.path);
         settings.setValue("name", entry.name);
         settings.setValue("coach", static_cast<int>(entry.coach.fitness));
         settings.setValue("coachReason", QString::fromStdString(entry.coach.reason));
@@ -255,8 +270,10 @@ void EnginePanel::save() {
         settings.setValue("opponentReason", QString::fromStdString(entry.opponent.reason));
     }
     settings.endArray();
-    settings.setValue("engines/opponent", m_opponent->currentData());
-    settings.setValue("engines/coach", m_coach->currentData());
+    for (auto [combo, key] : {std::pair{m_opponent, "engines/opponent"}, {m_coach, "engines/coach"}}) {
+        const QString path = combo->currentData().toString();
+        settings.setValue(key, !m_builtIn.isEmpty() && path == m_builtIn ? builtInWord : path);
+    }
 }
 
 void EnginePanel::updateOk() {
