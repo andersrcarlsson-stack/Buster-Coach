@@ -360,6 +360,17 @@ Position::Gain Position::StableGain(const std::vector<MaterialStep>& steps) {
     Gain gain{0, -1};
     if (stable >= 0) {
         gain.amount = steps[stable].balance;
+        // The gain is dated where the balance was reached and then HELD: back over the stable steps that already
+        // show it, so an even trade after the gain (a rook for a rook) doesn't move the date (2026-11-11, Anders'
+        // 13.Bxd6: the knight won at ply 6, the rooks traded at 7-9; dated 9 it was past the coach's 6 plies).
+        for (int i = stable - 1; i >= 0; --i) {
+            const bool unsettled = steps[i + 1].capture;
+            if (unsettled)
+                continue;
+            if (steps[i].balance != gain.amount)
+                break;
+            stable = i;
+        }
         for (int i = stable; i >= 0; --i) {              // back to where the balance last changed
             const int before = (i > 0) ? steps[i - 1].balance : 0;
             if (steps[i].balance != before) {

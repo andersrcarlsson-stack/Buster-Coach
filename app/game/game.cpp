@@ -20,31 +20,66 @@
 // =================================================================================================
 // The strength levels, calibrated for the built-in Buster 7.0.2 (release_design.md 14: 5 rounds of autoplay, every
 // game re-analysed by Stockfish, the mistakes matched to lichess rapid players of each rating; 2026-10-28).
-// Nodes per level (index = level; ~x2.2 a level): the quality of the ordinary moves, and so the steps between levels.
-// Level 11 = full strength: no node limit. Level 10 (≈ 2400) added 2026-11-04 (Anders: a step between 2200 and full
-// strength): its node limit one more x2.2, to be confirmed by the calibration.
+// Nodes per level (index = level): the engine's own move. Level 11 = full strength: no node limit. Level 10 (≈ 2400)
+// added 2026-11-04 (Anders: a step between 2200 and full strength).
 static constexpr int fullStrength = 11;
-static const long long levelNodes[] = {0, 1500, 3300, 7000, 15000, 33000, 70000, 150000, 330000, 700000, 1500000};
+// The calibration of 2026-11-08..10 (mistakes_design.md 17): the pick throttles the levels now, so the engine's own
+// move gets 1.5 M nodes at levels 1-8 (~0.7 s), 5 M at level 9 and 15 M at level 10 (~2.3 s and ~6.3 s: the coach's
+// deeper truth fits in that time).
+static const long long levelNodes[] = {0, 1500000, 1500000, 1500000, 1500000, 1500000, 1500000, 1500000, 1500000,
+                                       5000000, 15000000};
 
-// The opponent's mistakes per level (release_design.md 14, two kinds of human mistakes, 2026-11-04):
-// {horizon, {lapse, oversight, margin, best}}. A lapse: it plays from the "hope" view (didn't check the reply: can hang
-// a piece), levels 1-3 only (Anders: big blunders only there). An oversight: from a short look of `horizon` plies after
-// its move (every capture seen, a quiet resource not): `best` of them play its best-looking move (the stronger, the more
-// it trusts it), the rest choose among the moves within `margin` of it. Otherwise the engine's own move. The chances per
-// move; mistakes only where the view hides a trap. Matched to lichess players of ~1000 ... 2400 (red moves per 100 in
-// undecided positions; tools/pickcheck, 600 positions): START VALUES until the calibration games. None at full strength.
-struct OpponentLevel { int horizon; Fallibility fallibility; };
+// The opponent's mistakes per level (release_design.md 14, two kinds of human mistakes, 2026-11-04; the second version:
+// mistakes_design.md, 2026-11-07): {seeing, {lapse, oversight, margin, best, cap}, truth}. A lapse: it plays from the "hope"
+// view (didn't check the reply: can hang a piece), levels 1-3 only. An oversight: a quick look at every move (depth 1)
+// gives a shortlist, looked at again at the level's seeing depth (`seeing` plies after its move: it misses only what
+// lies beyond it); `best` of them play its best-looking move (the stronger, the more it trusts it), the rest choose
+// among the moves within `margin` of it. Otherwise the engine's own move. cap: the safety net from level 2 up (no pick
+// loses more than 40 points of win chance at levels 5-6, 30 from level 7 (mistakes_design.md 12), or 3 pawns, against
+// the engine's own move). None at full strength.
+// seeing: the seeing depth with a fraction (2.6 = 2 plies, 3 on 60 % of the moves, drawn per move: seeingDepth), so
+// the steps between levels can be even (a whole ply is a jump of 300-550 Elo). cap at levels 2-4: graded (80, 65, 50
+// points; its pawn backstop with it), the knob at the bottom. truth: the depth of the coach's truth for the shortlists
+// (mistakes_design.md 16): 10, or 12 at levels 9-10. Calibrated 2026-11-10 (mistakes_design.md, check rounds 1-3):
+// even steps from level 4 up, level 9 about 150 Elo under Stockfish 2200; levels 2-4 still close together.
+struct OpponentLevel { double seeing; Fallibility fallibility; int truth = 10; };
 static const OpponentLevel opponentLevels[] = {
-    {0, {}},                                                                              // [0] unused
-    {1, {0.22, 0.25, 0.15, 0.25}}, {1, {0.20, 0.22, 0.15, 0.25}}, {1, {0.02, 0.98, 0.15, 0.25}},   // 1000 1150 1300
-    {1, {0.00, 1.00, 0.15, 0.25}}, {1, {0.00, 0.89, 0.15, 0.25}}, {1, {0.00, 0.95, 0.15, 0.50}},   // 1450 1600 1750
-    {1, {0.00, 0.85, 0.15, 0.50}}, {1, {0.00, 0.73, 0.15, 0.50}}, {1, {0.00, 0.73, 0.15, 0.75}},   // 1900 2050 2200
-    {1, {0.00, 0.55, 0.15, 0.75}},                                                                  // 2400
-    {0, {}}};                                                                             // [11] full strength: none
+    {0, {}},                                                                                // [0] unused
+    {1.0, {0.22, 0.25, 0.15, 0.25}},       {1.7, {0.20, 0.22, 0.15, 0.25, 0.80}},               // 1000 1150
+    {2.2, {0.02, 0.98, 0.15, 0.25, 0.65}}, {2.6, {0.00, 1.00, 0.15, 0.25, 0.50}},               // 1300 1450
+    {3.0, {0.00, 0.89, 0.15, 0.25, 0.40}}, {3.7, {0.00, 0.95, 0.15, 0.50, 0.40}},               // 1600 1750
+    {4.4, {0.00, 0.85, 0.15, 0.50, 0.30}}, {5.2, {0.00, 0.73, 0.15, 0.50, 0.30}},               // 1900 2050
+    {6.0, {0.00, 0.73, 0.15, 0.75, 0.30}, 12}, {6.5, {0.00, 0.55, 0.15, 0.75, 0.30}, 12},       // 2200 2400
+    {0, {}}};                                                                               // [11] full strength: none
 
 // How deep the opponent follows the opening book, per level (plies from the standard start; the book holds 14): a
 // weak opponent leaves the book early, as a weak player would. openings_design.md "The opponent plays from the book".
+// This move's seeing depth: the whole part, one ply more with the fraction's chance.
+static int seeingDepth(const OpponentLevel &level) {
+    const int whole = static_cast<int>(level.seeing);
+    return whole + (QRandomGenerator::global()->generateDouble() < level.seeing - whole ? 1 : 0);
+}
+
 static const int bookPlies[] = {0, 2, 4, 6, 8, 10, 12, 14, 14, 14, 14, 14};
+
+// Fewer slips early (mistakes_design.md "Fewer slips early" ... "The light fade at levels 1-3", 2026-11-10/11): a
+// human is far more accurate in the opening than later, while the pick's chance was the same at every move (level 9
+// collapsed early). At the book's end (the level's bookPlies) only earlySlips[level] of the lapse and oversight
+// chances, rising steadily to all of them at White's move 25 (ply 48). The cap is unchanged. Fitted on the
+// calibration branch to all the autoplay games against Stockfish 2200: on target from level 4 up; levels 1-3 a lighter
+// fade (they stay bunched and somewhat strong: the fade is not their knob).
+static const double earlySlips[] = {1.0, 0.8, 0.8, 0.65, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
+static const int fadeEndPly = 48;
+static Fallibility slipsAt(int level, int ply) {
+    const int i = std::clamp(level, 0, fullStrength);
+    Fallibility f = opponentLevels[i].fallibility;
+    const int start = bookPlies[i];
+    const double t = std::clamp(double(ply - start) / (fadeEndPly - start), 0.0, 1.0);
+    const double scale = earlySlips[i] + (1.0 - earlySlips[i]) * t;
+    f.lapse *= scale;
+    f.oversight *= scale;
+    return f;
+}
 
 // Buster never answers faster than this: time to see its move coming. A first, fixed version of the
 // "human mimic" idea (todo: per level, varying).
@@ -103,6 +138,7 @@ void Game::onEngineMove(const QString &move) {
     m_engineThinking = false;          // the search is over: a cancel now has nothing to stop
     if (m_tableRequested && !m_tableArrived) {
         m_heldMove = move;             // the pick needs the coach's table: wait for setOpponentTable
+        emit opponentMoveKnown(move);  // its truth is part of the table (the coach may still have to score it)
         return;
     }
     playPicked(move);
@@ -113,7 +149,7 @@ void Game::playPicked(const QString &engineMove) {
     m_lastPickMistake = false;
     m_lastEngineMove = engineMove;
     QString move = engineMove;
-    const Fallibility fallibility = opponentLevels[std::min(m_level, fullStrength)].fallibility;
+    const Fallibility fallibility = slipsAt(m_level, int(m_moves.size()));   // this move's: fewer early
     if (fallibility.lapse + fallibility.oversight > 0.0) {
         const Pick pick = pickMove(engineMove.toStdString(), m_opponentTable, m_opponentHope, m_opponentLook, fallibility,
                                    QRandomGenerator::global()->generateDouble());
@@ -292,7 +328,7 @@ void Game::requestEngineMove() {
     m_tableRequested = level.fallibility.lapse + level.fallibility.oversight > 0.0;
     if (m_tableRequested)                           // the engine thinks: the coach scores its moves for the pick
         emit opponentTurnStarted(m_startFen, m_moves, m_position, level.fallibility.lapse > 0.0,
-                                 level.fallibility.oversight > 0.0 ? level.horizon : 0);
+                                 level.fallibility.oversight > 0.0 ? seeingDepth(level) : 0, level.truth);
     if (!m_moves.isEmpty())
         command += " moves " + m_moves.join(' ');
     m_engine->send(command);

@@ -23,9 +23,11 @@
 // The name shown under the opponent's name (release_design.md 14, the calibration). The rating, the lichess rapid band
 // whose mistakes the level matches, only with the built-in Buster: the node limits were measured with it.
 static QString levelName(int level, bool withRating) {
+    // No names of titles (mistakes_design.md 9, 2026-11-07): "Candidate master" read as FIDE 2200, while the numbers
+    // are lichess rapid ratings (lichess 2200 ≈ FIDE 1900-2000).
     static const char *names[] = {"", "Beginner", "Novice", "Casual", "Improving", "Club player",
-                                  "Strong club", "Expert", "Strong expert", "Candidate master", "Master",
-                                  "Full strength"};
+                                  "Strong club", "Tournament player", "Strong tournament", "Club champion",
+                                  "Top amateur", "Full strength"};
     static const int ratings[] = {0, 1000, 1150, 1300, 1450, 1600, 1750, 1900, 2050, 2200, 2400, 0};
     QString text = QString("%1 · %2").arg(level).arg(names[level]);   // "5 · Club player"
     if (withRating && ratings[level] > 0)
@@ -78,9 +80,10 @@ PlayerStrip::PlayerStrip(QWidget *parent) : QWidget(parent) {
     // The strength slider (the opponent only): the full width.
     m_level = new QSlider(Qt::Horizontal);
     m_level->setToolTip("The opponent's strength, from 1 (beginner) to 11 (full strength). The weaker levels think "
-                        "less and make human mistakes on purpose. A change counts from the opponent's next move; "
-                        "locked during a Tournament game.");
-    m_level->setRange(1, 11);                           // 1 = easiest .. 11 = full strength (10 · Master since 2026-11-04)
+                        "less and make human mistakes on purpose. The ratings (≈) are lichess rapid ratings, which "
+                        "run higher than FIDE ratings. A change counts from the opponent's next move; locked during "
+                        "a Tournament game.");
+    m_level->setRange(1, 11);                           // 1 = easiest .. 11 = full strength (level 10 since 2026-11-04)
     m_level->setPageStep(1);                            // a click beside the handle: one level
     m_level->setTickPosition(QSlider::TicksBelow);
     m_level->setTickInterval(1);

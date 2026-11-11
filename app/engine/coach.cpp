@@ -24,9 +24,8 @@ static const int maxDepth = 14;
 
 // "0000" is UCI's null move. In the queue it stands for the pass (the threat search), never one of your moves.
 static const QString passMove = "0000";
-// The opponent's moves as they really are (the pick by horizon): deeper than any level's view (the top levels see
-// depth 4), so a trap beyond the view shows.
-static const int opponentDeepDepth = 8;
+// The opponent's moves as they really are (the pick's truth): deeper than any level's seeing depth, so a trap beyond
+// the view shows. The depth comes with the turn (the level's: 10, or 12 at levels 9-10; mistakes_design.md 16-17).
 // The time cap on one search (Buster Coach's own guard against an engine's search blowing up in some position): your
 // moves' and the threat's searches, and the opponent's (each of its many short searches; the pick waits for them all).
 // Normal searches end far sooner; a capped one keeps the deepest score it reached.
@@ -101,7 +100,7 @@ void Coach::onHumanTurnStarted(const QString &startFen, const QStringList &moves
 // pick: as it sees them in a lapse and in an oversight (the views the level uses: cheap), then as they are (depth 8).
 // No threat, no passes. Your table (m_scores, m_moves) stays as it was: the record and the cards still read it.
 void Coach::onOpponentTurnStarted(const QString &startFen, const QStringList &moves, const Position::Chess &position,
-                                  bool hope, int horizon) {
+                                  bool hope, int horizon, int truthDepth) {
     cancel();
     const bool afterYourTurn = !m_forOpponent;   // the scores in m_scores are your last turn's, from m_prefix
     const QString yourPrefix = m_prefix;
@@ -120,12 +119,12 @@ void Coach::onOpponentTurnStarted(const QString &startFen, const QStringList &mo
         const UciInfo yours = m_scores.value(moves.last());
         const double chance = winChance(yours);
         if (yours.mate || chance >= 0.95 || chance <= 0.05) {
+            m_opponentStage = OpponentStage::Done;
             emit opponentTableReady();
             return;
         }
     }
     m_opponentQueue.clear();
-    QList<OpponentSearch> deep;
     Moves mover;
     for (Position::Move m : m_model.LegalMoves(position).moves) {   // a copy: make() takes a non-const Move&
         const std::string uci = m_model.MoveToUci(m);
@@ -149,14 +148,17 @@ void Coach::onOpponentTurnStarted(const QString &startFen, const QStringList &mo
             else
                 m_opponentQueue << OpponentSearch{move, m_prefix + move, 1, &m_opponentHope, false};
         }
-        if (horizon > 0)   // an oversight: a short look (every capture seen, a quiet resource beyond it not)
-            m_opponentQueue << OpponentSearch{move, m_prefix + move, horizon, &m_opponentLook, false};
-        deep << OpponentSearch{move, m_prefix + move, opponentDeepDepth, &m_opponentTable, false};
+        if (horizon > 0)   // an oversight: the quick look first (every capture seen, a quiet resource beyond it not)
+            m_opponentQueue << OpponentSearch{move, m_prefix + move, 1, &m_opponentLook, false};
     }
-    m_opponentQueue << deep;                         // the truth after the views: the views first are the cheap part
-    // A fresh hash for the view: the engine still holds deep results for these positions (your turn's analysis, the
+    m_opponentStage = OpponentStage::Views;          // the cheap part first; the shortlists, deeper, after it
+    m_opponentHorizon = horizon;
+    m_opponentTruthDepth = truthDepth;
+    m_opponentMove.clear();
+    // A fresh hash for the views: the engine still holds deep results for these positions (your turn's analysis, the
     // last truth), and a shallow search would read them and see as far as they did (pickcheck, 2026-11-04: depth 2
-    // gave depth 8's scores). "ucinewgame" asks a UCI engine to forget them; the truth then rebuilds its own.
+    // gave depth 8's scores). "ucinewgame" asks a UCI engine to forget them. The deeper look comes before the truth
+    // for the same reason; the truth then rebuilds its own.
     m_engine->send("ucinewgame");
     if (m_engineReady)
         scoreNext();
@@ -212,8 +214,9 @@ UciInfo Coach::bestScore() const {
 void Coach::scoreNext() {
     if (m_forOpponent) {                  // the opponent's work: its own queue, each search with its own position
         if (m_opponentQueue.isEmpty()) {
-            emit opponentTableReady();    // the view and the truth: the pick has what it needs
-            return;
+            nextOpponentStage();          // queues the next stage's searches, or waits, or sends the table
+            if (m_opponentQueue.isEmpty())
+                return;
         }
         m_opponentSearch = m_opponentQueue.takeFirst();
         startSearch(m_opponentSearch.position, m_opponentSearch.depth, opponentSearchCapMs);
@@ -250,6 +253,70 @@ void Coach::scoreNext() {
                 m_depth, searchCapMs);
 }
 
+// The opponent's stages (mistakes_design.md). Each runs when the one before has emptied the queue.
+void Coach::nextOpponentStage() {
+    if (m_opponentStage == OpponentStage::Views) {
+        // The shortlists: only these are looked at again, given the truth, and so ever picked. The views keep only
+        // them (pickFromView then weighs exactly the shortlist).
+        auto keepOnly = [](std::map<std::string, UciInfo> &view, const std::vector<std::string> &list) {
+            std::map<std::string, UciInfo> kept;
+            for (const std::string &m : list)
+                kept[m] = view[m];
+            view = kept;
+        };
+        const std::vector<std::string> looks = shortlist(m_opponentLook, lookShortlist);
+        const std::vector<std::string> hopes = shortlist(m_opponentHope, hopeShortlist);
+        keepOnly(m_opponentLook, looks);
+        keepOnly(m_opponentHope, hopes);
+        m_opponentStage = OpponentStage::DeeperLook;
+        if (m_opponentHorizon > 1)        // the seeing depth: the look's shortlist again, deeper (depth 1 is done)
+            for (const std::string &m : looks)
+                if (m_opponentLook[m].depth != 99)   // a game-ending move is exact already
+                    m_opponentQueue << OpponentSearch{QString::fromStdString(m), m_prefix + QString::fromStdString(m),
+                                                      m_opponentHorizon, &m_opponentLook, false};
+        if (!m_opponentQueue.isEmpty())
+            return;
+    }
+    if (m_opponentStage == OpponentStage::DeeperLook) {
+        m_opponentStage = OpponentStage::Truth;
+        std::vector<std::string> both;    // the two shortlists, each move once
+        for (const auto *view : {&m_opponentLook, &m_opponentHope})
+            for (const auto &[m, score] : *view)
+                if (!m_opponentTable.count(m) && std::find(both.begin(), both.end(), m) == both.end())
+                    both.push_back(m);   // (a game-ending move has its exact truth already)
+        for (const std::string &m : both)
+            m_opponentQueue << OpponentSearch{QString::fromStdString(m), m_prefix + QString::fromStdString(m),
+                                              m_opponentTruthDepth, &m_opponentTable, false};
+        if (!m_opponentQueue.isEmpty())
+            return;
+    }
+    if (m_opponentStage == OpponentStage::Truth) {
+        m_opponentStage = OpponentStage::WaitingForMove;
+        if (m_opponentMove.isEmpty())
+            return;                       // the engine still thinks: onOpponentMoveKnown goes on
+    }
+    if (m_opponentStage == OpponentStage::WaitingForMove) {
+        m_opponentStage = OpponentStage::OwnMove;
+        if (!m_opponentTable.count(m_opponentMove.toStdString())) {   // the yardstick: its truth too
+            m_opponentQueue << OpponentSearch{m_opponentMove, m_prefix + m_opponentMove, m_opponentTruthDepth,
+                                              &m_opponentTable, false};
+            return;
+        }
+    }
+    if (m_opponentStage == OpponentStage::OwnMove) {
+        m_opponentStage = OpponentStage::Done;
+        emit opponentTableReady();        // the views, the truth, the yardstick: the pick has what it needs
+    }
+}
+
+void Coach::onOpponentMoveKnown(const QString &move) {
+    if (!m_forOpponent || m_opponentStage == OpponentStage::Done)
+        return;                           // no opponent work this turn (or it's finished: a decided position)
+    m_opponentMove = move;
+    if (m_opponentStage == OpponentStage::WaitingForMove && !m_searching && m_engineReady)
+        scoreNext();                      // the stages were done and waiting: go on (its truth, or the table)
+}
+
 // One search: the position, "go depth", and the time cap. The info lines start afresh (a stopped search reports
 // the deepest score it reached, never the previous search's).
 void Coach::startSearch(const QString &position, int depth, int capMs) {
@@ -264,6 +331,7 @@ void Coach::startSearch(const QString &position, int depth, int capMs) {
 void Coach::cancel() {
     m_queue.clear();
     m_opponentQueue.clear();
+    m_opponentStage = OpponentStage::Done;
     if (m_searching) {
         m_engine->send("stop");
         ++m_staleBestMoves;
@@ -570,6 +638,13 @@ Coach::Why Coach::whyPhrase(const QString &move, bool bad) {
         return {"takes the centre", false};
     case Position::Principle::None:
         break;
+    }
+    // A capture is never "quiet" (2026-11-11): its gain lies past the 6 plies, or the line gives it back. Say what it
+    // takes; "no lasting gain" only when the line's material ends level.
+    if (const int taken = m_model.CapturedPiece(m_position, *m); taken != 0) {
+        static const char *names[] = {"", "pawn", "knight", "bishop", "rook", "queen"};   // (code + 1) / 2
+        const QString what = QString("takes a ") + names[(taken + 1) / 2];
+        return {gain.amount == 0 ? what + " (no lasting gain)" : what, false};
     }
     return {"a quiet move: no tactics", false};
 }

@@ -20,6 +20,9 @@
 //
 //   openingbook probe book.bin "<fen>"
 //       The book's moves in a position, with their share: a check of the book (and the reader the app needs).
+//
+//   openingbook depth counts.tsv < games.pgn
+//       How far games stay on well-trodden ground: the first ply whose move counts.tsv saw fewer than N times.
 
 #include "position.h"
 #include "move.h"
@@ -316,6 +319,85 @@ int names(int argc, char** argv) {
     return failed == 0 ? 0 : 1;
 }
 
+
+// How far real games stay on well-trodden ground: per game (PGN on stdin), the first ply whose move was played
+// fewer than N times in counts.tsv's games (2000+, the first 20 plies), for N = 20, 50, 200, 1000.
+int depth(int argc, char** argv) {
+    if (argc < 3) {
+        std::cerr << "usage: openingbook depth counts.tsv < games.pgn\n";
+        return 2;
+    }
+    std::unordered_map<std::uint64_t, std::uint32_t> seen;      // hash ^ move code spread → games
+    auto slot = [](std::uint64_t hash, std::uint16_t code) { return hash ^ (std::uint64_t(code) * 0x9E3779B97F4A7C15ull); };
+    {
+        std::ifstream in(argv[2]);
+        std::string line;
+        while (std::getline(in, line)) {
+            std::istringstream cols(line);
+            std::uint64_t hash;
+            int ply;
+            std::string uci;
+            std::uint32_t games, points2;
+            if (cols >> std::hex >> hash >> std::dec >> ply >> uci >> games >> points2)
+                seen[slot(hash, moveCode(uci))] = games;
+        }
+    }
+    const int limits[] = {20, 50, 200, 1000};
+    std::vector<int> left[4];                                    // per limit: the ply each game left (20 = still in)
+    Position pos;
+    Moves mover;
+    const Position::Chess start = pos.FenInput(Position::StartFen).value();
+    std::string line;
+    while (std::getline(std::cin, line)) {
+        if (line.empty() || line[0] == '[')
+            continue;
+        Position::Chess status = start;
+        std::istringstream words(line);
+        std::string word;
+        int ply = 0, depthInComment = 0;
+        int out[4] = {20, 20, 20, 20};
+        while (ply < 20 && words >> word) {
+            if (word[0] == '{') ++depthInComment;
+            if (depthInComment > 0) {
+                if (word.back() == '}') --depthInComment;
+                continue;
+            }
+            if (std::isdigit(static_cast<unsigned char>(word[0])))
+                continue;
+            std::optional<Position::Move> move = pos.SanToMove(status, word);
+            if (!move)
+                break;
+            const auto it = seen.find(slot(keyHash(positionKey(pos, status)), moveCode(pos.MoveToUci(*move))));
+            const std::uint32_t games = it == seen.end() ? 0 : it->second;
+            for (int i = 0; i < 4; ++i)
+                if (out[i] == 20 && games < std::uint32_t(limits[i]))
+                    out[i] = ply;
+            status = mover.make(status, *move);
+            ++ply;
+        }
+        for (int i = 0; i < 4; ++i)
+            left[i].push_back(out[i]);
+    }
+    std::cout << "games " << left[0].size() << "; the move that left (ply, 0-based; 20 = still in after 20 plies)\n";
+    for (int i = 0; i < 4; ++i) {
+        std::vector<int>& v = left[i];
+        std::sort(v.begin(), v.end());
+        double sum = 0;
+        int in10 = 0, in14 = 0, in20 = 0;
+        for (int p : v) {
+            sum += p;
+            in10 += p >= 10;
+            in14 += p >= 14;
+            in20 += p >= 20;
+        }
+        const double n = double(v.size());
+        std::cout << "  move seen < " << limits[i] << " times: median ply " << v[v.size() / 2] << ", mean "
+                  << sum / n << "; still in after 10 plies " << 100 * in10 / n << " %, after 14 " << 100 * in14 / n
+                  << " %, after 20 " << 100 * in20 / n << " %\n";
+    }
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -328,9 +410,12 @@ int main(int argc, char** argv) {
         return pack(argc, argv);
     if (command == "probe")
         return probe(argc, argv);
+    if (command == "depth")
+        return depth(argc, argv);
     std::cerr << "usage: openingbook names a.tsv b.tsv ... > names.tsv\n"
                  "       zstdcat games.pgn.zst | openingbook count [games] > counts.tsv\n"
                  "       openingbook pack counts.tsv book.bin [plies] [min games] [min share %] [min score %]\n"
-                 "       openingbook probe book.bin \"<fen>\"\n";
+                 "       openingbook probe book.bin \"<fen>\"\n"
+                 "       openingbook depth counts.tsv < games.pgn\n";
     return 2;
 }

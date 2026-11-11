@@ -255,6 +255,53 @@ int main() {
         if (!ok) ++failures;
     }
 
+    // The cap (mistakes_design.md 8): the safety net. f2f3 loses 45 points (54 % -> 9 %): beyond a 40-point cap, so
+    // the lure's best-looking move is never picked; the next best-looking within the cap is.
+    const Pick capped = pickMove("e2e4", deep, {}, lure, {0, 0.5, 0.05, 1.0, 0.40}, 0.20);
+    const Pick looser = pickMove("e2e4", deep, {}, lure, {0, 0.5, 0.05, 1.0, 0.50}, 0.20);
+    const Pick loosest = pickMove("e2e4", deep, {}, lure, {0, 0.5, 0.05, 1.0, 0.80}, 0.20);   // backstop 6 pawns
+    const std::map<std::string, UciInfo> behind = {{"e2e4", {8, false, -300}}, {"f2f3", {8, false, -650}},
+                                                   {"g1f3", {8, true, -3}}};   // -3.5 pawns; mated in 3
+    const std::map<std::string, UciInfo> behindLook = {{"e2e4", {2, false, -300}}, {"f2f3", {2, false, 50}},
+                                                       {"g1f3", {2, false, 100}}};
+    const Pick backstop = pickMove("e2e4", behind, {}, behindLook, {0, 0.5, 0.05, 1.0, 0.40}, 0.20);
+    const Pick uncapped = pickMove("e2e4", behind, {}, behindLook, {0, 0.5, 0.05, 1.0, 0.0}, 0.20);
+    struct CapCase { std::string name; Pick got; std::string move; bool mistake; };
+    const CapCase caps[] = {
+        {"cap 40: the hanging move is never picked",       capped,   "c2c4", false},
+        {"cap 50: 45 points pass, 4.3 pawns don't",         looser,   "c2c4", false},
+        {"cap 80: 4.3 pawns pass too (backstop 6)",         loosest,  "f2f3", true},
+        {"cap: 3.5 pawns and a mate, only its own left",    backstop, "e2e4", false},
+        {"no cap: the mate the look didn't see",            uncapped, "g1f3", true},
+    };
+    for (const CapCase &c : caps) {
+        const bool ok = c.got.move == c.move && c.got.mistake == c.mistake;
+        std::cout << (ok ? "PASS " : "FAIL ") << "pick: " << c.name << ": " << c.got.move
+                  << (c.got.mistake ? " (mistake)" : "") << "\n";
+        if (!ok) ++failures;
+    }
+
+    // --- shortlist: the moves a view puts first (mistakes_design.md 7, 10) ----------------------------------------
+    struct ShortCase { std::string name; const std::map<std::string, UciInfo> &view; ShortlistRule rule;
+                       std::vector<std::string> expected; };
+    const std::map<std::string, UciInfo> none;
+    const ShortCase shorts[] = {
+        {"the look's rule: all within 20 points",  calm, lookShortlist, {"c2c4", "e2e4", "d2d4", "g1f3", "a2a3"}},
+        {"the hope's rule: within 5 points",       calm, hopeShortlist, {"c2c4", "e2e4", "d2d4", "g1f3"}},
+        {"at least 3, though one stands out",      lure, {0.05, 3, 8},  {"f2f3", "c2c4", "e2e4"}},
+        {"at most 2",                              calm, {0.20, 1, 2},  {"c2c4", "e2e4"}},
+        {"an empty view: none",                    none, lookShortlist, {}},
+    };
+    for (const ShortCase &c : shorts) {
+        const std::vector<std::string> got = shortlist(c.view, c.rule);
+        const bool ok = got == c.expected;
+        std::string text;
+        for (const std::string &m : got)
+            text += m + " ";
+        std::cout << (ok ? "PASS " : "FAIL ") << "shortlist: " << c.name << ": " << text << "\n";
+        if (!ok) ++failures;
+    }
+
     // --- hashSetting: at least 128 MB, within the engine's range, never lowered (engine_design.md) ----------------
     struct HashCase { std::string name; std::string line; std::string expected; };   // "none" = nothing to send
     const HashCase hashCases[] = {

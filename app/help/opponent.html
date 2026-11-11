@@ -46,19 +46,19 @@ is the engine at full strength.</p>
 <td>about 1750</td>
 </tr>
 <tr>
-<td>7 · Expert</td>
+<td>7 · Tournament player</td>
 <td>about 1900</td>
 </tr>
 <tr>
-<td>8 · Strong expert</td>
+<td>8 · Strong tournament</td>
 <td>about 2050</td>
 </tr>
 <tr>
-<td>9 · Candidate master</td>
+<td>9 · Club champion</td>
 <td>about 2200</td>
 </tr>
 <tr>
-<td>10 · Master</td>
+<td>10 · Top amateur</td>
 <td>about 2400</td>
 </tr>
 <tr>
@@ -67,7 +67,8 @@ is the engine at full strength.</p>
 </tr>
 </tbody>
 </table>
-<p>The ratings belong to the built-in Buster: the levels were measured with it. With another engine the levels keep
+<p>The numbers are <strong>lichess rapid ratings</strong>, not FIDE ratings: online ratings run higher, so a lichess 2200 is
+roughly a FIDE 1900–2000 club player. The ratings belong to the built-in Buster: the levels were measured with it. With another engine the levels keep
 their order, but not their ratings, so the slider then shows the names only.</p>
 <p>Each level is meant to be a clear step up from the one below: if you beat a level about two games out of three, the
 next one is about right for you.</p>
@@ -79,7 +80,8 @@ about. The levels copy that:</p>
 <li>and each level has a <strong>horizon</strong>: how far ahead it looks when it judges a move. Now and then it plays the move that
   looks best within its horizon instead of the engine's own choice. Usually that's a fine move; but when the position
   hides a trap just beyond the horizon, it walks into it, as a player of that rating would. A beginner may leave a
-  piece where it can simply be taken; a 2200 player never does, but can miss a combination three moves deep.
+  piece where it can simply be taken; a 2200 player never does, but can miss a combination three moves deep.</li>
+<li>like people, it plays <strong>carefully just after the opening</strong>, and makes most of its mistakes in the middlegame.
 When it errs, the saved game marks the move with "?" and says what it should have played, and at Guided and Full
 coaching a card tells you "Buster slipped. There's something here." Spotting and punishing mistakes is a big part of
 getting better.</li>
@@ -87,10 +89,11 @@ getting better.</li>
 <p>It never blunders in a position that is already decided: a won ending is played out properly.</p>
 <p><strong>How the levels were made.</strong> The ratings are estimates, not promises. We measured how often lichess
 players of each rating make mistakes, and how big those mistakes are — about 3000 games for every rating band,
-analysed by a strong engine — and tuned each level until its mistakes looked like theirs. We also let the levels play
-each other, and Stockfish at known strengths, so that every step is about the same size. What we couldn't do is play
-them against real people at those ratings. If a level feels too strong or too weak for your rating, we'd like to hear
-about it.</p>
+analysed by a strong engine — so that each level's mistakes look like theirs. Then the levels played each other, and
+Stockfish at a known strength, close to 2000 games in all, and were tuned until they won about as often as their
+ratings say. Levels 4 to 10 are now close to their ratings; levels 1 to 3 still play stronger than their labels, more
+like 1400–1500. What we couldn't do is play them against real people at those ratings. If a level feels too strong or
+too weak for your rating, we'd like to hear about it.</p>
 <p><strong>Full strength</strong> thinks up to a minute on a hard move in an untimed game (about ten seconds on average); "Play now"
 makes it move at once. In timed games it uses its clock.</p>
 <p><strong>The opening.</strong> At the start the opponent plays moves from an opening book, as players do: how many moves deep

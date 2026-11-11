@@ -48,8 +48,14 @@ public slots:
     // kinds of mistakes): as it sees them in a lapse (hope: the position after the move with the other side passing,
     // depth 1) and in an oversight (a short look: the engine's depth after the move, horizon > 0), whichever the level
     // uses, then as they are (depth 8).
+    // mistakes_design.md (2026-11-07): in stages, each list shorter: the views of every legal move at depth 1, the
+    // shortlists (lookShortlist, hopeShortlist) looked at again at the level's seeing depth (`horizon`), the truth
+    // for the shortlists only, and last the engine's own move's truth (onOpponentMoveKnown) if no shortlist holds it.
     void onOpponentTurnStarted(const QString &startFen, const QStringList &moves, const Position::Chess &position,
-                               bool hope, int horizon);
+                               bool hope, int horizon, int truthDepth = 8);
+    // From Game: the opponent's engine has chosen its move. Its truth is the pick's yardstick: the table is ready
+    // (opponentTableReady) only once it is known and scored.
+    void onOpponentMoveKnown(const QString &move);
     void cancel(); // drop the queue; stop a running search
     void engineRestarted();   // the coach engine was restarted: forget the old process, wait for its "ready"
     // From the board: the move under the box ("" = none). Deepened next, even a bad move.
@@ -127,6 +133,15 @@ private:
     struct OpponentSearch { QString move; QString position; int depth = 0; std::map<std::string, UciInfo> *table = nullptr;
                             bool moverToMove = false; };
     QList<OpponentSearch> m_opponentQueue;
+    // The stages of the opponent's work (mistakes_design.md): views (every move, depth 1) -> deeper look (the look's
+    // shortlist, the seeing depth) -> truth (the shortlists, depth 8) -> waiting for the engine's move -> its truth
+    // -> done (the table sent).
+    enum class OpponentStage { Views, DeeperLook, Truth, WaitingForMove, OwnMove, Done };
+    OpponentStage m_opponentStage = OpponentStage::Done;
+    int m_opponentHorizon = 0;          // this turn's seeing depth (0 = no oversight view)
+    int m_opponentTruthDepth = 8;       // this turn's truth depth (the level's; mistakes_design.md 16)
+    QString m_opponentMove;             // the engine's own move, once known ("" = still thinking)
+    void nextOpponentStage();           // a stage's queue is empty: queue the next one (or send the table)
     OpponentSearch m_opponentSearch;    // the one running
     QStringList m_moves;   // all the human's legal moves this turn (each pass refills the queue from it)
     int m_depth = 6;       // the depth of the current pass

@@ -278,6 +278,11 @@ int main() {
         {"a pawn up at the end",      start, {"e2e4", "d7d5", "e4d5", "g8f6"}, "1@2"},
         {"a trailing capture: unseen", "4k3/8/8/3n4/8/8/8/3QK3 w - - 0 1", {"d1d5"}, "0@-1"},
         {"a promotion",               "8/4P1k1/8/8/8/8/8/4K3 w - - 0 1", {"e7e8q", "g7f6"}, "8@0"},
+        // Anders' game (2026-11-10): 13.Bxd6 wins the knight on f6 at ply 6 (16.Rxf6); the even rook trade after it
+        // (16...Rf8 17.Rxf8 Rxf8) mustn't move the date to ply 9 (past the coach's 6 plies: "a quiet move").
+        {"a gain, then an even trade",
+         "r3kb1r/1p2q2p/pn1ppnp1/2p5/5B2/2N2N2/PPPQ1PPP/2K1RB1R w kq - 0 13",
+         {"f4d6", "e7d6", "d2d6", "f8d6", "e1e6", "e8d7", "e6f6", "a8f8", "f6f8", "h8f8", "f1e2"}, "2@6"},
     };
     for (const GainCase& c : gain_cases) {
         const Position::Gain g = Position::StableGain(pos.MaterialAlongLine(pos.FenInput(c.fen).value(), c.moves));

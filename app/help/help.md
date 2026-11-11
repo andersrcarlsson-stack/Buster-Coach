@@ -253,13 +253,14 @@ is the engine at full strength.
 | 4 · Improving | about 1450 |
 | 5 · Club player | about 1600 |
 | 6 · Strong club | about 1750 |
-| 7 · Expert | about 1900 |
-| 8 · Strong expert | about 2050 |
-| 9 · Candidate master | about 2200 |
-| 10 · Master | about 2400 |
+| 7 · Tournament player | about 1900 |
+| 8 · Strong tournament | about 2050 |
+| 9 · Club champion | about 2200 |
+| 10 · Top amateur | about 2400 |
 | 11 · Full strength | the engine at full strength — far beyond human |
 
-The ratings belong to the built-in Buster: the levels were measured with it. With another engine the levels keep
+The numbers are **lichess rapid ratings**, not FIDE ratings: online ratings run higher, so a lichess 2200 is
+roughly a FIDE 1900–2000 club player. The ratings belong to the built-in Buster: the levels were measured with it. With another engine the levels keep
 their order, but not their ratings, so the slider then shows the names only.
 
 Each level is meant to be a clear step up from the one below: if you beat a level about two games out of three, the
@@ -273,6 +274,7 @@ about. The levels copy that:
   looks best within its horizon instead of the engine's own choice. Usually that's a fine move; but when the position
   hides a trap just beyond the horizon, it walks into it, as a player of that rating would. A beginner may leave a
   piece where it can simply be taken; a 2200 player never does, but can miss a combination three moves deep.
+- like people, it plays **carefully just after the opening**, and makes most of its mistakes in the middlegame.
 When it errs, the saved game marks the move with "?" and says what it should have played, and at Guided and Full
 coaching a card tells you "Buster slipped. There's something here." Spotting and punishing mistakes is a big part of
 getting better.
@@ -281,10 +283,11 @@ It never blunders in a position that is already decided: a won ending is played 
 
 **How the levels were made.** The ratings are estimates, not promises. We measured how often lichess
 players of each rating make mistakes, and how big those mistakes are — about 3000 games for every rating band,
-analysed by a strong engine — and tuned each level until its mistakes looked like theirs. We also let the levels play
-each other, and Stockfish at known strengths, so that every step is about the same size. What we couldn't do is play
-them against real people at those ratings. If a level feels too strong or too weak for your rating, we'd like to hear
-about it.
+analysed by a strong engine — so that each level's mistakes look like theirs. Then the levels played each other, and
+Stockfish at a known strength, close to 2000 games in all, and were tuned until they won about as often as their
+ratings say. Levels 4 to 10 are now close to their ratings; levels 1 to 3 still play stronger than their labels, more
+like 1400–1500. What we couldn't do is play them against real people at those ratings. If a level feels too strong or
+too weak for your rating, we'd like to hear about it.
 
 **Full strength** thinks up to a minute on a hard move in an untimed game (about ten seconds on average); "Play now"
 makes it move at once. In timed games it uses its clock.

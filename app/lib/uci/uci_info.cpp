@@ -126,6 +126,33 @@ static std::string pickFromView(const std::map<std::string, UciInfo> &deep, cons
     return "";                                           // dice = 1.0 exactly (or rounding), or nothing to pick
 }
 
+std::vector<std::string> shortlist(const std::map<std::string, UciInfo> &view, ShortlistRule rule) {
+    std::vector<std::pair<std::string, double>> ranked;
+    for (const auto &[move, score] : view)
+        ranked.push_back({move, winChance(score)});
+    std::stable_sort(ranked.begin(), ranked.end(), [](const auto &a, const auto &b) { return a.second > b.second; });
+    std::vector<std::string> list;
+    for (const auto &[move, chance] : ranked) {
+        if (int(list.size()) >= rule.most)
+            break;
+        if (int(list.size()) >= rule.least && ranked.front().second - chance >= rule.margin)
+            break;                                       // sorted: the rest look worse still
+        list.push_back(move);
+    }
+    return list;
+}
+
+// Beyond the cap (mistakes_design.md 8): too much win chance, too much material, or into a mate the own move avoids.
+static bool beyondCap(const UciInfo &own, const UciInfo &move, double cap) {
+    if (cap <= 0.0)
+        return false;
+    if (winChance(own) - winChance(move) > cap)
+        return true;
+    if (!own.mate && !move.mate && own.score - move.score > capPawnsFor(cap))
+        return true;
+    return move.mate && move.score < 0 && !(own.mate && own.score < 0);
+}
+
 // The opponent's mistakes (release_design.md 14, two kinds). The dice first decides the kind (a lapse, an oversight,
 // or none), then which of that view's fine-looking moves.
 Pick pickMove(const std::string &engineMove, const std::map<std::string, UciInfo> &deep,
@@ -138,13 +165,17 @@ Pick pickMove(const std::string &engineMove, const std::map<std::string, UciInfo
     const double base = winChance(own->second);
     if (base >= 0.95 || base <= 0.05)
         return {engineMove, false};                      // decided (a found mate, or 95 %+ either way): its own plan
+    std::map<std::string, UciInfo> allowed;              // the moves the pick may choose: the truth within the cap
+    for (const auto &[m, score] : deep)
+        if (!beyondCap(own->second, score, level.cap))
+            allowed[m] = score;
     std::string move;
     if (dice < level.lapse) {
-        move = pickFromView(deep, hope, lapseMargin, dice / level.lapse);
+        move = pickFromView(allowed, hope, lapseMargin, dice / level.lapse);
     } else if (dice < level.lapse + level.oversight) {
         const double share = (dice - level.lapse) / level.oversight;   // 0..1 within the oversights
-        move = share < level.best ? pickFromView(deep, look, 0.0, 0.0)  // trusts its best-looking move
-                                  : pickFromView(deep, look, level.margin, (share - level.best) / (1.0 - level.best));
+        move = share < level.best ? pickFromView(allowed, look, 0.0, 0.0)  // trusts its best-looking move
+                                  : pickFromView(allowed, look, level.margin, (share - level.best) / (1.0 - level.best));
     }
     if (move.empty())
         return {engineMove, false};                      // no mistake this move (or its view is empty)

@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.0.3 — an opponent that errs like a person
+
+- **The opponent's mistakes are rebuilt.** Each level now has a *horizon*: how far ahead it looks when it judges a
+  move. Now and then it plays the move that looks best within that horizon instead of the engine's own choice. Usually
+  that move is fine; when the position hides something just beyond the horizon, it walks into it, the way a player of
+  that strength would. A beginner may miss your direct reply; a strong club player misses a combination three moves
+  deep. A safety net keeps every level from the wild, out-of-character blunders that testers noticed in 1.0.
+- **Fewer mistakes right after the opening.** People play their first moves out of the opening carefully and make
+  most of their mistakes in the middlegame. The opponent now does the same: fewer slips just after the book (half as
+  many from level 4 up), back to normal by move 25. In testing, the strong levels used to collapse early far too often; that is fixed.
+- **The levels were measured by results.** Every level played hundreds of games against its neighbours and against
+  Stockfish at a known strength, and was tuned until it won about as often as its rating says. Levels 4 to 10 are now
+  close to their ratings. Levels 1 to 3 still play closer together, and stronger, than their labels (more like
+  1400–1500); making the beginner levels weaker is the next step. The opponent now thinks a little longer per move
+  (under a second at most levels, about 2 seconds at level 9 and 6 at level 10).
+- **The coach's "why" is more accurate on captures.** A capture that wins material and then leads into an even trade
+  now says what it wins ("Bxd6: wins a knight and two pawns for a bishop on move 16."); before, it could be called
+  "a quiet move". And a capture is never called quiet any more: at the least it says what it takes.
+- **Help and HOW_IT_WORKS.md** describe the new opponent; HOW_IT_WORKS.md is rewritten to be easier to read.
+
 ## 1.0.2 — the AppImage remembers its engine
 
 - **The Linux AppImage no longer opens the engine page on every start.** An AppImage unpacks itself to a new folder

@@ -142,9 +142,13 @@ signals:
 
     // The opponent's engine is asked for a move (not a book or practice move): the coach can score the opponent's
     // moves meanwhile, for its pick (release_design.md 14). Like humanTurnStarted, but for the other side. hope: the
-    // level makes lapses (score the moves blind to the reply); horizon: its oversights' short look (0 = none).
+    // level makes lapses (score the moves blind to the reply); horizon: its oversights' short look (0 = none);
+    // truthDepth: how deep the coach scores the shortlists as they really are.
     void opponentTurnStarted(const QString &startFen, const QStringList &moves, const Position::Chess &position,
-                             bool hope, int horizon);
+                             bool hope, int horizon, int truthDepth);
+    // The opponent's engine has chosen its move and the pick waits for the coach's table: the coach scores this move
+    // too, if no shortlist holds it (the pick's yardstick; mistakes_design.md 5).
+    void opponentMoveKnown(const QString &move);
 
 private slots:
     void onUserMove(const QString &move); // from BoardWidget::moveMade
