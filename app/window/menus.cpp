@@ -208,8 +208,7 @@ void MainWindow::createMenus() {
         action->setChecked(dark == savedDark);
         themeGroup->addAction(action);
         connect(action, &QAction::triggered, this, [this, dark]() {
-            applyTheme(dark);
-            applyTitleBar(this, dark);
+            applyTheme(dark);                       // the open windows' title bars follow (theme.cpp)
             QSettings().setValue("personal/theme", dark ? "dark" : "light");
         });
     }

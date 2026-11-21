@@ -55,7 +55,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupGameRow();             // the game buttons' state
     setupMoveList();            // move list: rows, viewing, clicks
     setupCoachLog();            // the coach log dock
-    setupNavigation();          // navigation: actions, the column beside the move list
+    setupNavigation();          // navigation: actions (keys), the move list in the panel
     setupCoachLine();           // the coach line under the move list; the threat's words
     setupGraph();               // the win-chance graph: between the move list and the coach line
     setupOpenings();            // the opening names: the strip above the move list
@@ -112,10 +112,12 @@ void MainWindow::buildWindow() {
     panel->setFrameShape(QFrame::StyledPanel);
     panel->setMinimumWidth(260);               // room for the strips, clocks and buttons
     m_panelLayout = new QVBoxLayout(panel);
+    m_panelLayout->setContentsMargins(3, 3, 3, 3);   // tight edges: short screens (panel_height_design.md 8)
 
     // The window's centre: board area (left) and side panel (right).
     auto *central = new QWidget;
     auto *row = new QHBoxLayout(central);
+    row->setContentsMargins(3, 3, 3, 3);            // tight edges: short screens (panel_height_design.md 8)
     row->addWidget(m_area);                    // stretch 0: the board area gets the width the panel leaves
     m_panelStack = new QStackedWidget;         // the side panel's pages, one shown at a time
     m_panelStack->addWidget(panel);            // page 0: play

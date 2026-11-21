@@ -8,7 +8,7 @@
 #include <cmath>
 
 WinGraph::WinGraph(QWidget *parent) : QWidget(parent) {
-    setFixedHeight(100);                                   // the width comes from the side panel
+    setFixedHeight(50);   // the smallest; the window sets the real height from its own (MainWindow::resizeEvent)
     setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);   // never widens the panel (as the coach line)
 }
 

@@ -2,6 +2,7 @@
 
 #include "piecepainter.h"
 #include <QFont>
+#include <QGuiApplication>
 #include <QFontMetricsF>
 #include <QPainter>
 #include <QPainterPath>
@@ -47,7 +48,11 @@ void drawPiece(QPainter &painter, const QRect &cell, int code, const QColor &tin
 }
 
 QPixmap piecePixmap(int code, int size, const QColor &rim) {
-    QPixmap pixmap(size, size);
+    // Drawn at the screen's real resolution: at 150 % scaling a 40-point picture is 60 pixels. Without this it was
+    // drawn at 40 and enlarged: blurry (the strips' kings, the editor's palette). The painter still thinks in points.
+    const qreal ratio = qApp->devicePixelRatio();
+    QPixmap pixmap(qRound(size * ratio), qRound(size * ratio));
+    pixmap.setDevicePixelRatio(ratio);
     pixmap.fill(Qt::transparent);              // only the piece is opaque
     QPainter painter(&pixmap);                 // a painter can draw on an image just as on a widget
     painter.setRenderHint(QPainter::Antialiasing);

@@ -81,6 +81,8 @@ public:
 protected:
     // The palette changed (light / dark): the pictures drawn once are drawn again (the New buttons' kings).
     void changeEvent(QEvent *event) override;
+    // The window's height changed: the graph's height follows it (panel_height_design.md 6).
+    void resizeEvent(QResizeEvent *event) override;
 
 
 private:
@@ -151,6 +153,7 @@ private:
     static QString savedEngine(const char *key);   // a role's engine file from QSettings (engines/opponent, engines/coach)
     static QString bundledEngine();                // the Buster beside the app ("" = not there)
     static QString gamesFolder();   // the autosave folder: ~/Documents/Buster Coach
+    QString newGameFile() const;    // a free file name for this game in its month's folder (made if missing)
     bool saveGame(const QString &path);   // the record as PGN into a file
     void autosave();                // this game into its file in the month's folder (10+ plies)
     void saveAbandoned();           // the game being left, if unfinished (result "*"): autosaved

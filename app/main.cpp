@@ -33,7 +33,6 @@ int main(int argc, char *argv[])
     const bool dark = QSettings().value("personal/theme", "light").toString() == "dark";   // the remembered appearance
     applyTheme(dark);
     MainWindow window;   // builds the window and wires the parts together
-    applyTitleBar(&window, dark);   // after the window exists: it needs its X11 id
     window.show();       // only a request; drawing happens in app.exec()
     return app.exec();   // the event loop: runs until the window is closed
 }

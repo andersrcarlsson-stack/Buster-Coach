@@ -307,8 +307,8 @@ depends on the level.
   once. **Offer draw**: the opponent accepts if it isn't better. **Resign** ends the game. Draw and Resign ask for a
   second click.
 - **Take back** (Ctrl+Z) takes back your last move, and the opponent's answer.
-- **Look back** at any earlier move: click it in the [move list](#movelist), or use the arrows beside it (← → Home End). The game
-  goes on meanwhile; End or Esc brings you back.
+- **Look back** at any earlier move: click it in the [move list](#movelist) or on the graph, or use the keys
+  ← → (one move back / forward) and Home (the start). The game goes on meanwhile; End or Esc brings you back.
 - **Set up a position** (Game → Set up position…) and play from it as White or Black.
 - **The end of a game**: a banner across the board, and the eval bar shows WON, LOST or DRAW.
 

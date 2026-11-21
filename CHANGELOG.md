@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.0.4 — fixes from the beta tester
+
+- **The side panel fits short screens.** On a laptop with Windows' display scaling at 150 % (a 1920 × 1080 screen),
+  the window has only about 660 points of height, and the panel needed more: the opponent's strip was cut (half its
+  king, the captured pieces) and the coach's cards were squeezed. Now everything fits in a window 650 high: the
+  margins are tighter, the move list and the graph give way first on a short screen (the graph shrinks from 100 to
+  50), and the captured pieces have a size limit. When the cards still don't fit, the least important one (the
+  strongest line first) steps aside whole, instead of every card being cut. Found by the beta tester.
+- **The navigation buttons beside the move list are gone** (they held the panel's height on short screens). Step
+  through a game with ← → Home, End or Esc (back to the game), or click a move in the list or a point on the graph.
+- **Sharp pieces with display scaling.** At 125 % or 150 % the kings in the player strips and the board editor's
+  pieces were blurry (drawn small and enlarged); they are now drawn at the screen's real resolution. And the help
+  window never opens taller than the screen.
+- **Save game… saves where Open game looks.** The dialog now suggests the game's own file in this month's folder,
+  named like the automatic saves; saved there, it is the same file the automatic save updates at the game's end (one
+  game, one file). Before, it started in the top folder, which Open game doesn't list.
+- **Dark title bars on every window (Linux).** In the dark appearance, the help window, About, the file dialogs and
+  message boxes now get the dark title bar too, not only the main window; switching the appearance updates the open
+  windows.
+- **A saved game names the level it was played at.** Changing the strength after the game had started (even before
+  the first move) changed how the opponent played, but the saved game kept the level from the start. Now the saved
+  game follows the slider (after a change mid-game: the last level).
+- **A coach card no longer claims a piece is safe when it isn't.** "Keeps the knight safe from …Bxf3" was shown for
+  a move that only postponed the capture (a check first, …Bxf3 a move later). The card now says so only when the
+  punishing move never comes in the line. Found by the beta tester.
+- **The coach connects its cards on a threatened piece.** When a piece was attacked twice and defended once (6.Be3
+  in the Sicilian, against …Nxd4 or …Bxd4), the "why" card spoke of a different capture than the threat card and
+  didn't say the move answers it. Now both cards name the same move: "Be3: defends the knight against …Bxd4, the
+  threat."
+
 ## 1.0.3 — an opponent that errs like a person
 
 - **The opponent's mistakes are rebuilt.** Each level now has a *horizon*: how far ahead it looks when it judges a

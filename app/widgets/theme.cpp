@@ -2,6 +2,7 @@
 
 #include "theme.h"
 #include <QApplication>
+#include <QEvent>
 #include <QMenu>
 #include <QPainter>
 #include <QPalette>
@@ -46,8 +47,34 @@ public:
 };
 
 static bool s_dark = false;   // the theme applyTheme set last (for fileDialogOptions)
+
+// Every window's title bar follows the theme, not only the main window's: the help window, About, the file dialogs,
+// message boxes. An event filter on the whole application sees each window's first Show, before the desktop maps it
+// and draws its frame. Windows and dialogs only: menus and tooltips have no title bar.
+class TitleBarFilter : public QObject {
+public:
+    using QObject::QObject;
+    bool eventFilter(QObject *object, QEvent *event) override {
+        if (event->type() == QEvent::Show)
+            if (auto *widget = qobject_cast<QWidget *>(object); widget && hasTitleBar(widget))
+                applyTitleBar(widget, s_dark);
+        return false;                               // only looking: the event goes on as normal
+    }
+    static bool hasTitleBar(const QWidget *widget) {
+        return widget->isWindow() && (widget->windowType() == Qt::Window || widget->windowType() == Qt::Dialog);
+    }
+};
+
 void applyTheme(bool dark) {
     s_dark = dark;
+    static TitleBarFilter *filter = nullptr;        // installed once, at the first call (main, before any window)
+    if (!filter) {
+        filter = new TitleBarFilter(qApp);           // owned by the application
+        qApp->installEventFilter(filter);
+    }
+    for (QWidget *window : QApplication::topLevelWidgets())   // a switch while running: the open windows follow
+        if (window->isVisible() && TitleBarFilter::hasTitleBar(window))
+            applyTitleBar(window, dark);
     // Fusion: the same style on every desktop, and it follows any palette (some platform styles ignore a dark one).
     QApplication::setStyle(new BusterStyle(QStyleFactory::create("Fusion")));   // Fusion, with our two changes
     QPalette p = QApplication::style()->standardPalette();   // Fusion's own light palette

@@ -40,6 +40,7 @@ static QString levelName(int level, bool withRating) {
 // =================================================================================================
 PlayerStrip::PlayerStrip(QWidget *parent) : QWidget(parent) {
     auto *column = new QVBoxLayout(this);   // the strip, top to bottom: the grid, the slider, the captures
+    column->setContentsMargins(0, 0, 0, 0);  // no edges of its own: the panel has them (panel_height_design.md 8)
 
     // The grid: the king | name and level, stacked | the clock. King and clock span both lines.
     auto *grid = new QGridLayout;

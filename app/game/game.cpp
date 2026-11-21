@@ -505,7 +505,7 @@ bool Game::loadGame(const QString &startFen, const QStringList &moves, bool huma
     m_board->setPosition(m_position);
     m_board->setGameState(gameState());   // a mate or a draw at the end: its marks
     m_board->setInputEnabled(false);
-    setStatus("A game from a file: browse it with the move list and the arrows.");
+    setStatus("A saved game: ← → or click a move.");   // short: the status bar is shared (a 1024-wide window)
     return true;
 }
 

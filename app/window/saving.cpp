@@ -42,6 +42,22 @@ bool MainWindow::saveGame(const QString &path) {
     return true;
 }
 
+// A free file name for this game, autosave's way: the month's folder (made if missing), "2026-10-25 11.10 You vs
+// Buster 7.0.2.pgn"; the same minute twice: "… (2).pgn". Shared by autosave and Save game….
+QString MainWindow::newGameFile() const {
+    const GameInfo &info = m_record.info();
+    const QString date = QString::fromStdString(info.date).replace('.', '-');      // "2026-10-25"
+    QString name = date + " " + QString::fromStdString(info.time).replace(':', '.') + " "
+                   + QString::fromStdString(info.white + " vs " + info.black);
+    name.replace(QRegularExpression(R"([/\\:*?"<>|])"), "_");   // characters some file systems refuse
+    const QString folder = gamesFolder() + "/" + date.left(7);   // "2026-10"
+    QDir().mkpath(folder);                                        // made if missing, with its parents
+    QString path = folder + "/" + name + ".pgn";
+    for (int n = 2; QFile::exists(path); ++n)
+        path = folder + "/" + name + QString(" (%1).pgn").arg(n);
+    return path;
+}
+
 // Autosave: this game's file, named at its first save (later saves overwrite it): the month's folder,
 // "2026-10-25 11.10 You vs Buster 7.0.2.pgn". Games under 10 plies aren't kept (quick restarts).
 void MainWindow::autosave() {
@@ -49,18 +65,8 @@ void MainWindow::autosave() {
         return;                                          // it came from a file: it is one already
     if (!m_autosaveAction->isChecked() || m_record.liveCount() < 10)
         return;                                          // switched off (a test session), or a quick restart
-    if (m_gameFile.isEmpty()) {
-        const GameInfo &info = m_record.info();
-        const QString date = QString::fromStdString(info.date).replace('.', '-');      // "2026-10-25"
-        QString name = date + " " + QString::fromStdString(info.time).replace(':', '.') + " "
-                       + QString::fromStdString(info.white + " vs " + info.black);
-        name.replace(QRegularExpression(R"([/\\:*?"<>|])"), "_");   // characters some file systems refuse
-        const QString folder = gamesFolder() + "/" + date.left(7);   // "2026-10"
-        QDir().mkpath(folder);                                        // made if missing, with its parents
-        m_gameFile = folder + "/" + name + ".pgn";
-        for (int n = 2; QFile::exists(m_gameFile); ++n)               // the same minute twice: "… (2).pgn"
-            m_gameFile = folder + "/" + name + QString(" (%1).pgn").arg(n);
-    }
+    if (m_gameFile.isEmpty())
+        m_gameFile = newGameFile();
     if (saveGame(m_gameFile)) {
         m_lastSaved = m_gameFile;
         m_forgetAction->setEnabled(true);
@@ -297,12 +303,20 @@ void MainWindow::setupSaving() {
 
     connect(qApp, &QApplication::aboutToQuit, this, &MainWindow::saveAbandoned);   // quitting mid-game
 
-    // Game → Save game…: the game as it stands, anywhere (the dialog starts in the games folder).
+    // Game → Save game…: the game as it stands, anywhere. The dialog suggests this game's own file (its month's
+    // folder, autosave's name), where Open game looks. Kept in the games folder, it becomes the game's file: the
+    // autosave at the end updates it (one game, one file). Elsewhere: a copy; the autosave keeps its own file.
     connect(m_saveAction, &QAction::triggered, this, [this]() {
-        const QString path = QFileDialog::getSaveFileName(this, "Save game", gamesFolder(), "PGN files (*.pgn)",
-                                                          nullptr, fileDialogOptions());   // dark: Qt's own dialog
-        if (!path.isEmpty())
-            saveGame(path.endsWith(".pgn") ? path : path + ".pgn");
+        const bool own = !m_loaded && !m_gameFile.isEmpty();
+        const QString suggested = own ? m_gameFile : newGameFile();
+        QString path = QFileDialog::getSaveFileName(this, "Save game", suggested, "PGN files (*.pgn)",
+                                                    nullptr, fileDialogOptions());   // dark: Qt's own dialog
+        if (path.isEmpty())
+            return;
+        if (!path.endsWith(".pgn"))
+            path += ".pgn";
+        if (saveGame(path) && !m_loaded && QFileInfo(path).absoluteFilePath().startsWith(gamesFolder() + "/"))
+            m_gameFile = path;
     });
     
     // Game → Forget last game: the newest autosaved file to the trash (a test run, noticed afterwards).

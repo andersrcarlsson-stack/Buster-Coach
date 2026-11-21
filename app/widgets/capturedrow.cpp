@@ -10,9 +10,11 @@
 static constexpr double rowUnits = 10.0;
 static constexpr double sameStep = 0.45;   // the next piece of the same type: 45 % of a piece further (overlapping)
 static constexpr double nextStep = 0.85;   // a new type: 85 %
+static constexpr int maxPiece = 28;        // the largest piece, and the row's height (panel_height_design.md 6)
 
 CapturedRow::CapturedRow(QWidget *parent) : QWidget(parent) {
     setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);   // the width comes from the strip, never from us
+    setFixedHeight(maxPiece);                                       // the height: always the same, whatever the width
 }
 
 void CapturedRow::setPieces(const QList<int> &codes) {
@@ -22,7 +24,7 @@ void CapturedRow::setPieces(const QList<int> &codes) {
 }
 
 int CapturedRow::heightForWidth(int width) const {
-    return int(width / rowUnits);                  // the piece size: the widest row just fits
+    return std::min(int(width / rowUnits), maxPiece);   // the piece size: the widest row just fits, at most maxPiece
 }
 
 QSize CapturedRow::sizeHint() const {

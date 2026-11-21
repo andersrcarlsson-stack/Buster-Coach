@@ -24,6 +24,7 @@
 EditorPanel::EditorPanel(QWidget *parent) : QFrame(parent) {
     setFrameShape(QFrame::StyledPanel);                 // the same frame as the play page
     auto *column = new QVBoxLayout(this);
+    column->setContentsMargins(3, 3, 3, 3);   // tight edges, as the play page: short screens (panel_height_design.md 8)
     auto *title = new QLabel("Set up a position");
     QFont titleFont = title->font();
     titleFont.setBold(true);

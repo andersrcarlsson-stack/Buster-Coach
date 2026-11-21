@@ -7,11 +7,13 @@
 #include <QHBoxLayout>
 #include <QMenuBar>
 #include <QPushButton>
+#include <QScreen>
 #include <QSettings>
 #include <QTextBrowser>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QApplication>
+#include <algorithm>
 #include <QMessageBox>
 #include "engine.h"
 #include <QEvent>
@@ -117,7 +119,9 @@ void MainWindow::showHelp() {
         connect(browser, &QTextBrowser::backwardAvailable, back, &QPushButton::setEnabled);
         connect(browser, &QTextBrowser::forwardAvailable, forward, &QPushButton::setEnabled);
         browser->setSource(QUrl("qrc:/help/index.html"));
-        m_helpWindow->resize(90 * fontMetrics().averageCharWidth(), 40 * fontMetrics().height());   // font units
+        // In font units, but never taller than the screen (a laptop at 150 %: ~660 high): its bottom edge stays reachable.
+        const int tallest = int(screen()->availableGeometry().height() * 0.9);
+        m_helpWindow->resize(90 * fontMetrics().averageCharWidth(), std::min(40 * fontMetrics().height(), tallest));
     }
     m_helpWindow->show();
     m_helpWindow->raise();                               // already open: to the front

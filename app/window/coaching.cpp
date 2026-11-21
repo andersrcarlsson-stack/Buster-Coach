@@ -16,6 +16,9 @@
 #include <QStatusBar>
 #include <QVBoxLayout>
 #include <QDateTime>
+#include <QResizeEvent>
+#include <QTimer>
+#include <QTableWidget>
 #include <algorithm>
 #include "engine.h"
 #include "boardwidget.h"
@@ -24,6 +27,7 @@
 #include "mastercoach.h"
 #include "confidencedot.h"
 #include "wingraph.h"
+#include "playerstrip.h"
 
 // The verdict colours: the move's box on the board, and its card in the coach line.
 static QColor verdictColour(MoveQuality quality) {
@@ -201,6 +205,11 @@ void MainWindow::setupRecord() {
     connect(m_engine, &Engine::ready, this, [this, fillInfo]() {
         if (m_record.liveCount() == 0)
             fillInfo();                              // nothing played yet: (re)fill, the name included
+    });
+    // The level the opponent plays at: a slider move counts from its next move (Game::setLevel), so the saved game
+    // follows it too. Before, the level was taken only at the start: set 1 after a start at 5, and the file said 5.
+    connect(m_opponentStrip, &PlayerStrip::levelChanged, this, [this](int level) {
+        m_record.info().level = level;
     });
     connect(m_game, &Game::gameOver, this, [this](const QString &text, const QString &result) {
         m_record.info().result = result.toStdString();
@@ -388,6 +397,22 @@ void MainWindow::updateCoachLine() {
                                           " padding: 2px 6px;%2 }").arg(edges[i], i == 4 ? " color: gray;" : ""));
     }
 
+    // Cards that don't fit give way whole, the least important first (panel_height_design.md 5): never every card cut
+    // to a sliver. The room: the coach line's height plus what the move list can still give (down to its minimum).
+    if (m_coachLine->width() <= 0)
+        return;                                     // not laid out yet
+    const int room = m_coachLine->height() + m_moveList->height() - m_moveList->minimumHeight();
+    const int spacing = m_coachLine->layout()->spacing();
+    auto needed = [&] {
+        int sum = -spacing;
+        for (QLabel *card : m_cards)
+            if (!card->isHidden())
+                sum += card->heightForWidth(m_coachLine->width()) + spacing;
+        return sum;
+    };
+    for (int i : {4, 1, 2, 3})                      // the line, the note, the hanging square, the move; the threat stays
+        if (needed() > room)
+            m_cards[i]->hide();
 }
 
 // =================================================================================================================
@@ -554,6 +579,19 @@ void MainWindow::setupGraph() {
     connect(m_game, &Game::viewChanged, m_graph, [this](int ply) { m_graph->setShownPly(ply); });
     // A click on the curve: that move on the board, as a click in the move list does.
     connect(m_graph, &WinGraph::plyClicked, m_game, &Game::viewPly);
+}
+
+// The graph's height follows the window's, never the cards (panel_height_design.md 6): 50 in a short window (the beta
+// tester's laptop at 150 %: about 658), 100 in a tall one, gradual in between. It starts at 50 (wingraph.cpp), so
+// the window's minimum counts the smallest graph and a short screen is never overruled.
+void MainWindow::resizeEvent(QResizeEvent *event) {
+    QMainWindow::resizeEvent(event);
+    if (!m_graph) return;                                 // a resize before the panel is built
+    const int shortWindow = 660, tallWindow = 760;       // the window's heights where the graph is 50 and 100
+    const double t = std::clamp(double(height() - shortWindow) / (tallWindow - shortWindow), 0.0, 1.0);
+    m_graph->setFixedHeight(int(50 + 50 * t));
+    // The room for the cards changed too: fit them again, once the panel is laid out at the new size.
+    QTimer::singleShot(0, this, &MainWindow::updateCoachLine);
 }
 
 void MainWindow::updateGraph() {

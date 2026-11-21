@@ -611,8 +611,11 @@ Coach::Why Coach::whyPhrase(const QString &move, bool bad) {
         if (!quiet.isEmpty())
             return {quiet + ", the threat", true};
     }
-    // The second source: the red moves' common reply, if this move's line doesn't run into it.
-    if (!m_commonReply.isEmpty() && QString::fromStdString(info.pvMove) != m_commonReply) {
+    // The second source: the red moves' common reply, if this move's line doesn't run into it ANYWHERE: a check
+    // first only postpones it (2026-11-16, the beta tester's 19.Bh7+ Kh8 20.Be4 Bxf3: "keeps the knight safe").
+    const std::string common = m_commonReply.toStdString();
+    const bool runsIntoIt = std::find(info.pv.begin(), info.pv.end(), common) != info.pv.end();
+    if (!m_commonReply.isEmpty() && !runsIntoIt) {
         const QString stops = stopWords(m_position, *m, m_commonReply, true);
         if (!stops.isEmpty())
             return {stops + QString(", which punishes %1 other moves").arg(m_commonCount), true};
@@ -717,8 +720,6 @@ QString Coach::stopWords(const Position::Chess &before, const Position::Move &yo
     const bool white = victim % 2 == 0;                  // the victim's side: yours
     const std::vector<int> hangingBefore = m_model.Hanging(before, white);
     const bool wasHanging = std::find(hangingBefore.begin(), hangingBefore.end(), target) != hangingBefore.end();
-    if (!wasHanging && !keeps)
-        return QString();                                // not en prise to begin with: nothing we can judge
     Moves mover;
     Position::Move m = yours;                            // a copy: make() takes a non-const Move&
     const Position::Chess after = mover.make(before, m);
@@ -733,11 +734,15 @@ QString Coach::stopWords(const Position::Chess &before, const Position::Move &yo
         return "moves the " + piece + " away from " + san;
     if (yours.to_square == attacker)
         return "takes the attacker (" + san + ")";
-    if (!wasHanging)
+    if (!wasHanging && keeps)
         return "keeps the " + piece + " safe from " + san;   // safe before, still safe: the common reply's case
     const std::vector<int> attackers = m_model.Attackers(after, target, !white);
     if (std::find(attackers.begin(), attackers.end(), attacker) == attackers.end())
         return "blocks " + san;
+    // The threat (real by the engine) on a piece Hanging doesn't count as en prise, e.g. two attackers against one
+    // defender (2026-11-16, 6.Be3 against ...Nxd4): it's "defends" only if your move adds a defender.
+    if (!wasHanging && m_model.Attackers(after, target, white).size() <= m_model.Attackers(before, target, white).size())
+        return QString();
     return "defends the " + piece + " against " + san;
 }
 

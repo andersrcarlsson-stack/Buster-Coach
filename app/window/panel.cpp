@@ -4,7 +4,7 @@
 // Sections:
 //   1. Side panel: buttons, player strips, strength slider, geek line, clocks
 //   2. Move list: rows, viewing, clicks
-//   3. Navigation: actions (keys + buttons), the column beside the move list
+//   3. Navigation: actions (keys), the move list in the panel
 //   4. Status bar: result row, status text
 //   5. Mode status
 //   6. Captured pieces
@@ -110,7 +110,7 @@ void MainWindow::setupSidePanel()
     m_opponentStrip = new PlayerStrip;
     m_playerStrip = new PlayerStrip;
     m_panelLayout->insertWidget(0, m_opponentStrip);   // index 0: above the buttons
-    // The move list: below the opponent's strip, above the buttons; placed with the navigation column (section 3).
+    // The move list: below the opponent's strip, above the buttons; placed in section 3.
     m_moveList = new QTableWidget(0, 4);                // number | White | Black | your notes (movelist_design.md)
     m_moveList->horizontalHeader()->hide();
     m_moveList->verticalHeader()->hide();
@@ -133,6 +133,8 @@ void MainWindow::setupSidePanel()
                 updateMoveList();
         }, m_moveList));
     m_moveList->verticalHeader()->setDefaultSectionSize(fontMetrics().height() + 6);          // the text + a little air
+    // Its smallest height: two rows (panel_height_design.md 4), the same on every system, not Qt's own default.
+    m_moveList->setMinimumHeight(2 * m_moveList->verticalHeader()->defaultSectionSize() + 2 * m_moveList->frameWidth());
     m_moveList->setToolTip("The game so far. Click a move to see that position; the game goes on meanwhile (End or "
                            "Esc brings you back).");
     m_panelLayout->addWidget(m_playerStrip);           // at the very bottom
@@ -350,7 +352,7 @@ bool MainWindow::notesAllowed() const {
 }
 
 // =================================================================================================================
-// 3. NAVIGATION: actions (keys + buttons), the column beside the move list
+// 3. NAVIGATION: actions (keys), the move list in the panel
 // =================================================================================================================
 void MainWindow::setupNavigation()
 {
@@ -381,19 +383,10 @@ void MainWindow::setupNavigation()
     // action: two actions with one shortcut = "ambiguous", and Qt runs neither.)
     connect(m_endAction, &QAction::triggered, this, [this]() { setThreatShown(false); });
 
-    // --- The navigation column beside the move list ----------------------------------------------------------------
-    // The move list with the navigation buttons in a column on its right (saves a row of height).
-    auto *navColumn = new QVBoxLayout;
-    for (QAction *action : {startAction, backAction, forwardAction, m_endAction}) {
-        auto *button = new QToolButton;
-        button->setDefaultAction(action);
-        navColumn->addWidget(button);
-    }
-    navColumn->addStretch();                       // the buttons at the top, next to the first moves
-    auto *listRow = new QHBoxLayout;
-    listRow->addWidget(m_moveList, 1);             // the list takes the width
-    listRow->addLayout(navColumn);
-    m_panelLayout->insertLayout(1, listRow, 1);    // after the opponent's strip; it takes all spare height
+    // --- The move list, without navigation buttons ----------------------------------------------------------------
+    // No buttons since 2026-11-21 (panel_height_design.md 3: their column held the list's height on short screens):
+    // the keys above, a click on a move, a click on the graph.
+    m_panelLayout->insertWidget(1, m_moveList, 1);   // after the opponent's strip; it takes all spare height
 }
 
 // =================================================================================================================
