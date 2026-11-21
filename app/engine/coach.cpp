@@ -483,6 +483,16 @@ static QString tradeWords(const std::vector<Position::MaterialStep> &steps, cons
     return sacrificeWords(traded);
 }
 
+// The material on the board from the side to move's view, in pawns (1, 3, 3, 5, 9): negative = behind.
+static int materialBalance(const Position::Chess &position) {
+    static const int value[] = {0, 1, 3, 3, 5, 9, 0};   // by type (code + 1) / 2: -, P N B R Q K
+    int balance = 0;
+    for (int code : position.mailbox)
+        if (code > 0)
+            balance += (code % 2 == 1 ? -1 : 1) * value[(code + 1) / 2];   // odd codes are Black
+    return position.pit ? -balance : balance;                                // Black to move: Black's view
+}
+
 // The threat in words. The pass's move in SAN, played in the swapped position (no move numbers: "…exf3" for Black).
 QString Coach::threatText() {
     std::optional<Position::Chess> passed = m_model.PassTurn(m_position);
@@ -597,6 +607,21 @@ Coach::Why Coach::whyPhrase(const QString &move, bool bad) {
     if (gain.amount != 0 && (bad || gain.ply <= 6)) {
         // Ply 0 is your move. Black to move: its ply 0 is in move N, its ply 1 (White) in move N + 1.
         const int number = m_position.fullmove_number + (gain.ply + (m_position.pit ? 1 : 0)) / 2;
+        // Winning back (2026-11-21, "Nxd4: wins a pawn on move 5" after 4...cxd4, Anders' 1.0.4 screenshot; probably
+        // the beta tester's "gain a pawn"): behind before the move and at most level after it. A recapture is the
+        // common case, a gambit pawn won back later the other. If the move also answers the threat, that follows.
+        const int behind = -materialBalance(m_position);
+        if (gain.amount > 0 && behind > 0 && gain.amount <= behind) {
+            QString words = "wins back " + tradeWords(steps, gain);
+            if (gain.ply > 0)
+                words += QString(" on move %1").arg(number);
+            if (!bad && m_threatReal) {
+                const QString stops = stopWords(m_position, *m, QString::fromStdString(m_pass.pvMove), false);
+                if (!stops.isEmpty())
+                    words += ", and " + stops + ", the threat";
+            }
+            return {words, true};
+        }
         return {QString("%1 %2 on move %3").arg(gain.amount > 0 ? "wins" : "loses",
                                                  tradeWords(steps, gain)).arg(number), true};
     }

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Taking back material is called that.** After 4...cxd4, the card for 5.Nxd4 said "wins a pawn on move 5", though
+  it only takes the pawn back and material is level again. Now: "Nxd4: wins back a pawn, and takes the attacker
+  (…dxc3), the threat." The same for a gambit pawn regained later. Probably the beta tester's "the coach says I gain
+  a pawn, but I don't".
+
 ## 1.0.4 — fixes from the beta tester
 
 - **The side panel fits short screens.** On a laptop with Windows' display scaling at 150 % (a 1920 × 1080 screen),
