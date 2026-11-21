@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.5 — winning back is called that
 
 - **Taking back material is called that.** After 4...cxd4, the card for 5.Nxd4 said "wins a pawn on move 5", though
   it only takes the pawn back and material is level again. Now: "Nxd4: wins back a pawn, and takes the attacker
