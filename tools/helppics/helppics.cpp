@@ -448,6 +448,7 @@ int main(int argc, char *argv[])
     const char *pin = "rn1qkbnr/ppp2ppp/3p4/4p3/4P1b1/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 2 4";
     const int c3 = 18, f3sq = 21, d2 = 11, d4 = 27, h4 = 31;
     const QString red = "#c62828", green = QColor(60, 180, 75).name(), blue = "#2a6ab0";
+    const QString danger = "#8c3cc8";               // violet since 2026-11-22: the threat and hanging cards (red = verdicts)
     for (const auto &[sq, file] : {std::pair{c3, "ask_count.png"}, std::pair{f3sq, "ask_grey.png"}}) {
         BoardWidget *b = board(pin);
         b->setLastMove(57, 30);                     // ...Bc8-g4
@@ -489,7 +490,7 @@ int main(int argc, char *argv[])
         BoardWidget *b = board(two);
         b->setLastMove(42, 32);                     // ...Nc6-a5
         b->setThreat("a5c4");
-        stack(grabBoard(b, 0, 5, 3, 5), cards({{red, "Buster threatens …Nxc4, taking your undefended bishop."}}, 360),
+        stack(grabBoard(b, 0, 5, 3, 5), cards({{danger, "Buster threatens …Nxc4, taking your undefended bishop."}}, 360),
               out + "ask_threat.png");
     }
     {   // the hanging piece's words (the signs page's picture)
@@ -498,11 +499,11 @@ int main(int argc, char *argv[])
         b->setLingerTime(50);
         send(b, QEvent::MouseMove, 36);
         wait(200);
-        stack(grabBoard(b, 1, 6, 4, 5), cards({{red, "Knight e5: attacked by the d6 pawn, not defended."}}, 360),
+        stack(grabBoard(b, 1, 6, 4, 5), cards({{danger, "Knight e5: attacked by the d6 pawn, not defended."}}, 360),
               out + "ask_hanging.png");
     }
-    cards({{red, "Buster threatens …Nxc4, taking your undefended bishop."},
-           {red, "Bishop c4: attacked by the a5 knight, not defended."},
+    cards({{danger, "Buster threatens …Nxc4, taking your undefended bishop."},
+           {danger, "Bishop c4: attacked by the a5 knight, not defended."},
            {green, "Bb5+: moves the bishop away from …Nxc4, the threat."},
            {"gray", "Strongest line: 6... c6 7. dxc6 bxc6 8. Qf3"}}, 360).save(out + "ask_cards.png");
     cards({{blue, "Buster missed 4... Bxd1. You got away with it."},

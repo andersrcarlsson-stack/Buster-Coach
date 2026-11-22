@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.0.6 — stronger top levels, truer cards
+
+- **A capture that wins at once says so.** When your move takes material and an even trade follows straight away, the
+  card dated the gain at the trade's end ("dxc3: wins back the bishop on move 2", "Qxa5: can win a pawn on move 73").
+  Now it's dated now: "Qxa5: wins a pawn on move 72."
+- **No warning box where Buster's piece merely escapes.** When Buster's own piece is hanging, the threat is only that it
+  gets away ("take it, or it escapes"). The board still marks the piece, but no longer puts a violet box on its escape
+  square, which looked like a danger to you.
+- **A pawn the coach can't promise is a pawn you "can win".** When the coach's line wins a single pawn a few moves
+  later, the card now says "can win a pawn on move 16" instead of "wins a pawn": a check against a stronger engine
+  confirmed only about half of these. A pawn your move takes itself, winning material back, and bigger gains still
+  say "wins". Prompted by the beta tester's "I don't gain a pawn".
+- **Strong levels drop fewer big chunks.** The opponent's safety net, which keeps a slip from losing too much by a
+  deeper check, is tighter from level 6 up (level 9: 20 points of win chance instead of 30, level 10: 15). The beta
+  tester, a 2200+ player, saw level 9 drop 30 points to lines a player of its strength would see. The opponent still
+  makes as many mistakes as before; only the big ones its own deeper look can see are gone. A replay of 1,100 saved
+  positions puts the strength change at about +10 to +25 Elo.
+- **A piece that's lost anyway isn't blamed on your move.** When one of your pieces was already hanging and couldn't
+  be saved, nearly every move's card said "gives the knight for a pawn: the coach judges the play worth it". Now the
+  card talks about the move itself instead.
+- **The win-chance graph and the eval bar agree.** While you thought, the bar followed the coach's deeper searches but
+  the graph's last point stayed at its first look, so in sharp positions the two showed different numbers. The graph's
+  last point now follows the bar until you move. Seen by the beta tester.
+- **"Loses" only on a mistake.** A move the coach rates fine, whose line gives material a few moves later, said
+  "loses the rook and a pawn for a bishop on move 18" next to a green or amber box. It now says "gives …: the coach
+  judges the play worth it", as for any sacrifice. Found by a check of 15,000 coach cards against rules a card must
+  never break.
+- **Red means only "a mistake" now.** The threat card, the hanging-piece card, the "!" on a hanging piece and the
+  flash of the opponent's piece and target were red, the same red as a bad move, so a red threat card above a green
+  box read as "my move is wrong". They are violet now, the colour of "watch out" (as an illegal attempt already was);
+  red is only ever a mistake of yours. Found by the beta tester.
+- **Castling away from a threat is called that.** A rook threatened on h1, saved by O-O, got "defends the rook
+  against …Bxh1"; now "O-O: moves the rook away from …Bxh1, the threat."
+
 ## 1.0.5 — winning back is called that
 
 - **Taking back material is called that.** After 4...cxd4, the card for 5.Nxd4 said "wins a pawn on move 5", though

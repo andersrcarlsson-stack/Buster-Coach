@@ -74,6 +74,7 @@ Rest the mouse on a move and the coach tells you, in one sentence, why it is goo
 
 - "g4: allows mate."
 - "Nxe5: wins the knight on move 16."
+- "Qf5: can win a pawn on move 16." (a single pawn later in the line: the coach's line shows it, but it isn't forced)
 - "Bxe4: gives the bishop for two pawns, and wins it back on move 25." (a sacrifice)
 - "Nd5: moves the knight away from …exf6, the threat."
 - "Nxd4: starts an even exchange."
@@ -154,7 +155,8 @@ Some extra rules keep it human:
 
 - **A safety net.** Before a move is played, the coach checks it more deeply. A move that would be a wild,
   out-of-character blunder for that level is never played. The net is coarse on purpose: the subtle mistakes still
-  happen.
+  happen. It tightens with the level: a strong player rarely drops a big chunk of the game that a deeper look would
+  have shown, so from level 6 up the net catches smaller and smaller ones.
 - **Only beginners hang pieces.** At levels 1–3 the opponent sometimes doesn't check your reply at all, and can leave
   a piece where it can simply be taken. From level 4 up that doesn't happen.
 - **Careful after the opening.** People play their first moves out of the opening carefully and make most of their

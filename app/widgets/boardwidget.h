@@ -276,7 +276,7 @@ private:
     QHash<int, int> m_pieceVerdicts;   // empty = no verdicts (not scored yet, or switched off)
     void restartLinger(int square);   // a new square (or off the board): end any linger, wait again
     QHash<QString, QString> m_targetReplies;   // move -> strongest reply; empty = no flash
-    QString m_threat;              // Buster's threat ("" = none): the flash without a linger
+    QString m_threat;              // Buster's threat ("" = none; a square alone = the piece only): the flash without a linger
     QList<int> m_hangingMarks;     // squares with a hanging piece: the red "!" (empty = none)
     QTimer m_deepTimer;            // single-shot: the second linger level, after another wait
     bool m_deepLinger = false;     // lingeredOnMove has announced a move (end it with "")

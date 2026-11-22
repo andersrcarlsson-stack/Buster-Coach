@@ -137,7 +137,15 @@ void MainWindow::setThreatShown(bool on)
 void MainWindow::updateThreat()
 {
     m_threatAction->setEnabled(m_aidsAction->isChecked() && m_threatJudged && !m_viewing);
-    m_board->setThreat(m_threatShown && m_aidsAction->isChecked() ? m_threat : QString());
+    QString flash = m_threatShown && m_aidsAction->isChecked() ? m_threat : QString();
+    // A rescue (the card's "take it, or it escapes"): Buster's own hanging piece moving away is no danger to you, so
+    // the flash shows the piece only, without the violet box on its escape square (2026-11-22, 6...Bxc3: g7 boxed).
+    if (flash.size() >= 4) {
+        const int from = (flash[0].unicode() - 'a') + 8 * (flash[1].unicode() - '1');   // "c3g7" -> c3 (a1 = 0)
+        if (m_busterHanging.contains(from))
+            flash.truncate(2);
+    }
+    m_board->setThreat(flash);
     updateHangingMarks();   // the "!" leaves the threat's target alone while the flash shows
 }
 

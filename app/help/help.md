@@ -83,10 +83,10 @@ coach's verdict, so an amber box with a book means "popular, but it costs someth
 
 *Left: the first H, the piece to move. Right: the second H, where it goes.*
 
-**A red "!"** in a square's corner: **your** piece there is hanging (attacked and not properly defended). Once the
+**A violet "!"** in a square's corner: **your** piece there is hanging (attacked and not properly defended). Once the
 coach has looked and finds no real threat, the "!" goes: taking the piece wouldn't pay the opponent right now. The
 opponent's hanging pieces are never marked; you have to find them, or ask (linger on them).
-**The threat** (T): the opponent's piece and the square it would strike, flashed in red.
+**The threat** (T): the opponent's piece and the square it would strike, flashed in violet. Violet always means *watch out* (a danger, or a move that isn't allowed); red is only ever a mistake of yours.
 
 <img src="images/hanging.png" width="180"> <img src="images/threat.png" width="180">
 
@@ -156,7 +156,7 @@ mate threat, attacks something, develops a piece, takes the centre. For a mistak
 move would do ("another move wins a pawn on move 5" — without naming it: that's what H is for). Linger longer for
 **the strongest line**: the moves that would follow.
 
-**On a red move**, the opponent's piece that would punish it, and the square it strikes, flash in red.
+**On a red move**, the opponent's piece that would punish it, and the square it strikes, flash in violet.
 
 <img src="images/ask_green.png" width="300"> <img src="images/ask_red.png" width="300">
 
@@ -168,10 +168,10 @@ the opponent's).
 
 <img src="images/ask_hanging.png" width="360">
 
-*Lingering on the knight with the red "!": why it's hanging.*
+*Lingering on the knight with the violet "!": why it's hanging.*
 
 **The cards.** The answers appear as cards under the move list, each with its own coloured edge, always in this
-order: on top the threat or the check now (red), then a note about the last move (blue), a hanging piece (red), why
+order: on top the threat or the check now (violet), then a note about the last move (blue), a hanging piece (violet), why
 the move is good or bad (its verdict's colour), and the strongest line (grey).
 
 <img src="images/ask_cards.png" width="360">
@@ -223,7 +223,7 @@ then becomes **Custom**).
 | Thinking aids: lingering, Space, T | – | – | ✓ | ✓ |
 | Hints (H) | – | ✓ | ✓ | ✓ |
 | Comments after moves | – | ✓ | ✓ | ✓ |
-| Warnings by themselves: the threat, the red "!" | – | – | – | ✓ |
+| Warnings by themselves: the threat, the violet "!" | – | – | – | ✓ |
 
 In words: **Tournament** shows nothing. **Play** lets you ask for hints and tells you afterwards. **Guided** adds the
 eval bar and everything you can **ask** for. **Full coaching** also colours your moves and **warns you by itself**.

@@ -22,15 +22,17 @@
 // =================================================================================================
 // 1. COLOURS
 // =================================================================================================
-// The colour of an illegal attempt (the box and the glyph): violet, so red is free for "bad move".
-static const QColor illegalColour(140, 60, 200);
+// Violet: "watch out" (2026-11-22): an illegal attempt, the opponent's capture coming (the threat, the linger flash) and
+// your hanging pieces' "!". Red is only for your move's verdict.
+static const QColor dangerColour(140, 60, 200);
+static const QColor illegalColour = dangerColour;
 // Game end: the mated king (deeper than the "bad move" red) and both kings on a draw (neutral).
 static const QColor mateColour(150, 0, 0);
 static const QColor drawColour(110, 110, 110);
 // The hint: gold, used nowhere else ("a tip", not "you did something"). The tone in Looks.
 static const QColor hintColour(200, 40, 160);   // magenta: the coach's suggestion, apart from green / amber / red (Looks)
-// The linger flash: the strongest reply to the move under the box (for now the "bad move" red; Looks).
-static const QColor replyColour(200, 40, 40);
+// The linger flash and the threat: the opponent's capture coming (violet: danger, not a verdict).
+static const QColor replyColour = dangerColour;
 // The play-through's frame around the board: "this is a preview, not the game" (Looks: tune).
 static const QColor previewColour(0, 150, 255);
 
@@ -120,10 +122,12 @@ void BoardWidget::paintEvent(QPaintEvent *) {
         }
     }
     
-    // Buster's threat, in the same look, when no linger flash is showing. Only on the live position.
-    if (replyFrom == -1 && m_threat.size() >= 4 && !m_viewing) {
+    // Buster's threat, in the same look, when no linger flash is showing. Only on the live position. A square alone
+    // ("c3"): the piece without a target box (a rescue: the "threat" is only Buster's hanging piece escaping).
+    if (replyFrom == -1 && m_threat.size() >= 2 && !m_viewing) {
         replyFrom = uciSquare(m_threat, 0);
-        replyTo   = uciSquare(m_threat, 2);
+        if (m_threat.size() >= 4)
+            replyTo = uciSquare(m_threat, 2);
     }
 
     // `rank` here is the SCREEN row (0 = top), model square = squareAt(rank, file)
@@ -254,13 +258,13 @@ void BoardWidget::paintEvent(QPaintEvent *) {
                     painter.drawText(badge, Qt::AlignCenter, count);
                     painter.restore();
                 }
-                // A hanging piece: a red "!" in the top-left corner (the top-right holds the verdict count).
+                // A hanging piece: a violet "!" in the top-left corner (the top-right holds the verdict count).
                 if (m_hangingMarks.contains(square) && !m_viewing) {
                     QFont mark = painter.font();
                     mark.setPixelSize(sq / 3);
                     mark.setBold(true);
                     painter.setFont(mark);
-                    painter.setPen(QColor(200, 40, 40));          // the "bad" red (Looks: refine)
+                    painter.setPen(dangerColour);                 // violet: danger (red is for your move's verdict)
                     painter.drawText(QRect(x0 + file * sq, y0 + rank * sq, sq, sq).adjusted(sq / 30, 0, 0, 0),
                                      Qt::AlignLeft | Qt::AlignTop, "!");
                 }

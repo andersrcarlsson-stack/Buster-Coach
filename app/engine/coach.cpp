@@ -185,9 +185,15 @@ void Coach::onBestMove(const QString &) {
     m_searchCap.stop();
     UciInfo score = m_lastInfo;
     score.score = -score.score;
+    // No info line at all (an engine that answers with only "bestmove", or the cap before the first one): no score.
+    // The move stays unscored (no colour, no card; the next pass tries it again) rather than "exactly equal".
+    // (scratchbook V6; the opponent's tables keep the old way: Buster always sends info.)
+    const bool scored = m_lastInfo.depth > 0;
     if (m_forOpponent) {                  // the opponent's move: into its view or its truth (first: m_current is yours)
         const UciInfo mine = m_opponentSearch.moverToMove ? m_lastInfo : score;   // "hope": the mover was to move
         (*m_opponentSearch.table)[m_opponentSearch.move.toStdString()] = mine;
+    } else if (!scored) {
+        // nothing to keep: neither a score nor a threat
     } else if (m_current == passMove) {   // the threat search: kept apart, it isn't one of your moves
         m_pass = score;
         emit threatSearched(score);
@@ -238,10 +244,9 @@ void Coach::scoreNext() {
         m_depth += 2;          // the next pass, 2 plies deeper
         const UciInfo best = bestScore();   // every move has a score after pass 1
         for (const QString &move : m_moves)    // candidates only: correct and playable moves are deepened,
-            if (move == m_masterMove || classifyMove(best, m_scores.value(move), false) != MoveQuality::Bad)
+            if (move == m_masterMove || !m_scores.contains(move)   // unscored (V6: no info line): try it again
+                || classifyMove(best, m_scores.value(move), false) != MoveQuality::Bad)
                 m_queue << move;  // bad moves keep the score they have
-        if (m_queue.isEmpty())
-            return;               // nothing to deepen (e.g. every move ends the game)
         if (m_queue.isEmpty())
             return;               // nothing to deepen (e.g. every move ends the game)
         if (!m_passPosition.isEmpty())
@@ -590,10 +595,21 @@ Coach::Why Coach::whyPhrase(const QString &move, bool bad) {
     line.insert(line.end(), info.pv.begin(), info.pv.end());
     const std::vector<Position::MaterialStep> steps = m_model.MaterialAlongLine(m_position, line);
     const Position::Gain gain = Position::StableGain(steps);
+    // A piece already lost: the reply takes a piece that was hanging BEFORE your move, and your move leaves it there.
+    // Its loss isn't the move's doing (nearly every move "gives" it), so the material words are skipped and the other
+    // kinds speak (2026-11-22, the card audit's rule 13: 341 cards, e.g. "Nd7: gives the knight for a pawn" with the
+    // knight on g4 lost whatever you played). Not on a red move: there another move saves it, and "loses …" is right.
+    bool alreadyLost = false;
+    if (!bad && steps.size() >= 2 && steps[1].capture && line.size() >= 2) {
+        const std::string &reply = line[1];
+        const int target = (reply[3] - '1') * 8 + (reply[2] - 'a');
+        const std::vector<int> hanging = m_model.Hanging(m_position, !m_position.pit);   // the mover's loose pieces
+        alreadyLost = m->from_square != target && std::find(hanging.begin(), hanging.end(), target) != hanging.end();
+    }
     // A sacrifice (2026-10-29): a move that isn't red, whose line first GIVES material (it settles below level after
     // the reply) and doesn't come out ahead. The engine judges it worth it; "loses …" or "attacks …" would mislead.
     const Position::Exchange first = Position::FirstSettled(steps);
-    if (!bad && first.balance < 0 && gain.amount <= 0) {
+    if (!bad && !alreadyLost && first.balance < 0 && gain.amount <= 0) {
         const QString given = "gives " + sacrificeWords(first);
         if (gain.amount == 0 && gain.ply >= 0) {        // the line gets it back: where the balance last changed
             const int number = m_position.fullmove_number + (gain.ply + (m_position.pit ? 1 : 0)) / 2;
@@ -604,16 +620,19 @@ Coach::Why Coach::whyPhrase(const QString &move, bool bad) {
     // A gain far down the line isn't why a good move is good (and the line's tail is its least sure part): only within
     // 6 plies (3 moves each). A red move keeps its loss however far: that is why it's red. (2026-10-30, "d3: wins a pawn
     // on move 10." on an amber quiet move.)
-    if (gain.amount != 0 && (bad || gain.ply <= 6)) {
+    if (gain.amount != 0 && (bad || gain.ply <= 6) && !(alreadyLost && gain.amount < 0)) {
+        // The whole gain already there after your move, only trades after it (dxc3 gxf4 Bxf4; Qxa5 and a trade): it's
+        // won now, at ply 0, whatever the line does next (2026-11-22, the card audit's rule 15).
+        const Position::Gain held = (gain.amount > 0 && steps[0].balance == gain.amount) ? Position::Gain{gain.amount, 0} : gain;
         // Ply 0 is your move. Black to move: its ply 0 is in move N, its ply 1 (White) in move N + 1.
-        const int number = m_position.fullmove_number + (gain.ply + (m_position.pit ? 1 : 0)) / 2;
+        const int number = m_position.fullmove_number + (held.ply + (m_position.pit ? 1 : 0)) / 2;
         // Winning back (2026-11-21, "Nxd4: wins a pawn on move 5" after 4...cxd4, Anders' 1.0.4 screenshot; probably
         // the beta tester's "gain a pawn"): behind before the move and at most level after it. A recapture is the
         // common case, a gambit pawn won back later the other. If the move also answers the threat, that follows.
         const int behind = -materialBalance(m_position);
-        if (gain.amount > 0 && behind > 0 && gain.amount <= behind) {
-            QString words = "wins back " + tradeWords(steps, gain);
-            if (gain.ply > 0)
+        if (held.amount > 0 && behind > 0 && held.amount <= behind) {
+            QString words = "wins back " + tradeWords(steps, held);
+            if (held.ply > 0)
                 words += QString(" on move %1").arg(number);
             if (!bad && m_threatReal) {
                 const QString stops = stopWords(m_position, *m, QString::fromStdString(m_pass.pvMove), false);
@@ -622,8 +641,16 @@ Coach::Why Coach::whyPhrase(const QString &move, bool bad) {
             }
             return {words, true};
         }
-        return {QString("%1 %2 on move %3").arg(gain.amount > 0 ? "wins" : "loses",
-                                                 tradeWords(steps, gain)).arg(number), true};
+        // A loss on a move that isn't red is a sacrifice, however late in the line it comes (2026-11-22, the card audit's
+        // rule 3: 183 cards said "loses …" next to a box that wasn't red). "Loses" is for red moves only.
+        if (gain.amount < 0 && !bad)
+            return {"gives " + tradeWords(steps, gain) + ": the coach judges the play worth it", true};
+        // A single pawn later in the line is the least sure gain: Stockfish confirmed only about half of them (the card
+        // audit's rule 11, 2026-11-22; the beta tester's "I don't gain a pawn"). The line shows it can be won, not that
+        // it must be. A pawn taken by the move itself, bigger gains and red moves keep "wins".
+        const bool unsure = held.amount == 1 && held.ply > 0 && !bad;
+        return {QString("%1 %2 on move %3").arg(held.amount > 0 ? (unsure ? "can win" : "wins") : "loses",
+                                                 tradeWords(steps, held)).arg(number), true};
     }
     if (bad)
         return {};                                       // a red move without material: "misses ..." (4c)
@@ -748,14 +775,22 @@ QString Coach::stopWords(const Position::Chess &before, const Position::Move &yo
     Moves mover;
     Position::Move m = yours;                            // a copy: make() takes a non-const Move&
     const Position::Chess after = mover.make(before, m);
-    const int now = (yours.from_square == target) ? yours.to_square : target;   // where the piece stands afterwards
+    // Castling moves the rook too (2026-11-22, scratchbook V5): a threatened rook saved by castling has moved away, and
+    // its safety counts on its new square. Kingside the rook goes h -> f, queenside a -> d (the king's square +-1).
+    const bool kingside = yours.to_square > yours.from_square;
+    const int rookFrom = kingside ? yours.to_square + 1 : yours.to_square - 2;
+    const bool rookCastles = yours.is_castling && target == rookFrom;
+    const bool movesIt = yours.from_square == target || rookCastles;
+    const int now = yours.from_square == target ? yours.to_square
+                  : rookCastles ? (kingside ? yours.to_square - 1 : yours.to_square + 1)
+                  : target;                              // where the piece stands afterwards
     const std::vector<int> hangingAfter = m_model.Hanging(after, white);
     if (std::find(hangingAfter.begin(), hangingAfter.end(), now) != hangingAfter.end())
         return QString();                                // still hanging: not stopped
     static const char *names[] = {"", "pawn", "knight", "bishop", "rook", "queen", "king"};   // (code + 1) / 2
     const QString piece = names[(victim + 1) / 2];
     const QString san = replySan(threat);
-    if (yours.from_square == target)
+    if (movesIt)
         return "moves the " + piece + " away from " + san;
     if (yours.to_square == attacker)
         return "takes the attacker (" + san + ")";

@@ -258,13 +258,14 @@ void MainWindow::setupRecord() {
         updateGraph();
     });
 
-    // The opponent's move gets its value from the master's first word (depth 10+) in the new position: the same signal
-    // "... missed it" waits for. A turn start also comes after a takeback or a resume: the value is fresh then too.
+    // The opponent's move gets its value from the master in the new position (depth 10+), and follows every deeper word
+    // until you move, as the eval bar does (2026-11-22: the graph's last point had stopped at the master's first word
+    // while the bar went on: the two disagreed in sharp positions). Your move freezes it (movePlayed above).
+    // A turn start also comes after a takeback or a resume: the value is fresh then too.
     connect(m_game, &Game::humanTurnStarted, this, [this]() { m_curveWaiting = true; });
     connect(m_master, &MasterCoach::bestMoveChanged, this, [this](const UciInfo &now) {
         if (!m_curveWaiting)
             return;
-        m_curveWaiting = false;
         m_record.setLastAfter(winChance(now));      // the master's score is in your view already
         updateGraph();
     });
@@ -383,10 +384,12 @@ void MainWindow::updateCoachLine() {
     const QString key = m_coach->scores().contains(m_boxMoveNow) ? m_boxMoveNow : m_boxMoveNow + "q";   // a promotion
     if (m_moveColoursAction->isChecked() && m_qualities.contains(key))
         moveEdge = verdictColour(m_qualities.value(key)).name();   // "#3cb44b": a colour as style-sheet text
-    const QString danger = dark ? "#ff7070" : "#c62828";
-    const QString edges[5] = {danger,                         // the position (threat, check): red, danger
+    // Danger is violet (2026-11-22), as the board's "!", threat flash and illegal box: red is only for a move's verdict
+    // (the tester read a red threat card next to a green box as "my move is wrong"). Lighter in the dark theme.
+    const QString danger = dark ? "#b48ce6" : "#8c3cc8";
+    const QString edges[5] = {danger,                         // the position (threat, check): violet, danger
                               dark ? "#8ab4f8" : "#2a6ab0",   // the note: blue
-                              danger,                         // the hanging square: red, as the "!"
+                              danger,                         // the hanging square: violet, as the "!"
                               moveEdge,                       // the move: its verdict colour, as its box
                               "gray"};                        // the strongest line
     for (int i = 0; i < 5; ++i) {
