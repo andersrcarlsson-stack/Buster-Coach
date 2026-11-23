@@ -175,9 +175,9 @@ exercise.
 
 | Level | Meant to play like | Looks ahead |
 |---|---|---|
-| 1 · Beginner | a lichess rapid player of about 1000 | your reply |
-| 2 · Novice | about 1150 | 1–2 half-moves |
-| 3 · Casual | about 1300 | 2 half-moves |
+| 1 · Lesson: free pieces | a lesson; lessons off: about 800 | your reply |
+| 2 · Lesson: your loose pieces | a lesson; lessons off: about 1000 | 1–2 half-moves |
+| 3 · Lesson: threats | a lesson; lessons off: about 1200 | 3 half-moves |
 | 4 · Improving | about 1450 | 2–3 half-moves |
 | 5 · Club player | about 1600 | 3 half-moves |
 | 6 · Strong club | about 1750 | 3–4 half-moves |
@@ -191,6 +191,23 @@ A half-move is one move by one side. "2–3" means: sometimes 2, sometimes 3, dr
 **lichess rapid** ratings: online ratings run higher than FIDE ratings, so a lichess 2200 is roughly a FIDE 1900–2000
 club player. They belong to the built-in Buster; with another engine the levels keep their order but the ratings
 aren't shown.
+
+### Levels 1–3: lessons
+
+The bottom three levels don't chase a rating. Each one teaches the habit a beginner gains most from, building on the
+one before:
+
+- **Level 1, free pieces:** now and then the opponent leaves a piece unprotected on purpose. You learn to look for what
+  you can take.
+- **Level 2, your loose pieces:** the opponent never misses a piece you leave hanging. You learn to check your pieces
+  before you move.
+- **Level 3, threats:** the opponent makes simple, direct attacks, and takes the piece if you don't answer. You learn
+  to ask "what does it want?" before every move.
+
+Between the lessons it plays like a weak but sensible player; a lesson comes about every 6 to 10 of its moves. A card
+names the habit before your move ("Something is free.") and says how it went after it ("You took the free knight.").
+Coaching is Full during the lessons, except that the warnings wait for you, so the answer stays yours to find. With
+Coaching → Lessons off, levels 1–3 are plain easy games of about 800, 1000 and 1200.
 
 ## 8. How the levels were measured
 
@@ -212,7 +229,7 @@ the opening" rule came from: the strong levels lost too many games early, which 
 
 | Level | Label | Measured |
 |---|---|---|
-| 1–3 | 1000 – 1300 | about 1400 – 1500 |
+| 1–3 | lessons (off: 800 – 1200) | best effort, from earlier measurements |
 | 4 | 1450 | about 1600 |
 | 5 | 1600 | about 1700 |
 | 6 | 1750 | about 1800 |
@@ -223,9 +240,9 @@ the opening" rule came from: the strong levels lost too many games early, which 
 
 **Known limits, honestly:**
 
-- **The beginner levels are too strong and too close together.** Levels 1–3 play like about 1400–1500 and differ
-  little from each other. Making them weaker is the next step; the way to do it is the size of their blunders, not
-  their timing.
+- **The beginner levels are a best effort.** Measured, the old levels 1–3 played like about 1400–1500 and differed
+  little from each other, so they became lessons; their strength with lessons off comes from earlier measurements of
+  the same settings (about 800, 1000 and 1300), not from a new calibration.
 - **No real people were measured.** The games were against the program itself and Stockfish. If a level feels too
   strong or too weak for your rating, please say so (see the README).
 - **The ratings are for the built-in Buster** on an ordinary PC. Another engine, or a very slow machine, changes the

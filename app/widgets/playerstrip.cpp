@@ -22,13 +22,19 @@
 // =================================================================================================
 // The name shown under the opponent's name (release_design.md 14, the calibration). The rating, the lichess rapid band
 // whose mistakes the level matches, only with the built-in Buster: the node limits were measured with it.
-static QString levelName(int level, bool withRating) {
+static QString levelName(int level, bool withRating, bool lessons) {
+    // The teaching levels (teaching_levels_design.md, 2026-11-23): with lessons on, levels 1-3 are named by what they
+    // teach, without a rating (they aren't calibrated, by design).
+    static const char *lessonNames[] = {"", "Lesson: free pieces", "Lesson: your loose pieces", "Lesson: threats"};
+    if (lessons && level >= 1 && level <= 3)
+        return QString("%1 · %2").arg(level).arg(lessonNames[level]);
     // No names of titles (mistakes_design.md 9, 2026-11-07): "Candidate master" read as FIDE 2200, while the numbers
     // are lichess rapid ratings (lichess 2200 ≈ FIDE 1900-2000).
     static const char *names[] = {"", "Beginner", "Novice", "Casual", "Improving", "Club player",
                                   "Strong club", "Tournament player", "Strong tournament", "Club champion",
                                   "Top amateur", "Full strength"};
-    static const int ratings[] = {0, 1000, 1150, 1300, 1450, 1600, 1750, 1900, 2050, 2200, 2400, 0};
+    // Levels 1-3 without lessons: the weak but sensible player, stepped best effort (2026-11-23).
+    static const int ratings[] = {0, 800, 1000, 1200, 1450, 1600, 1750, 1900, 2050, 2200, 2400, 0};
     QString text = QString("%1 · %2").arg(level).arg(names[level]);   // "5 · Club player"
     if (withRating && ratings[level] > 0)
         text += QString(" (≈ %1)").arg(ratings[level]);              // "5 · Club player (≈ 1600)"
@@ -91,7 +97,7 @@ PlayerStrip::PlayerStrip(QWidget *parent) : QWidget(parent) {
     m_level->hide();                                    // shown by showStrength()
     column->addWidget(m_level);
     connect(m_level, &QSlider::valueChanged, this, [this](int level) {
-        m_levelName->setText(levelName(level, m_ratingsShown));
+        showLevelName();
         emit levelChanged(level);
     });
 
@@ -160,7 +166,7 @@ void PlayerStrip::setClock(const QString &text, bool running, ClockAlert alert) 
 
 void PlayerStrip::showStrength(int level) {
     m_level->setValue(level);
-    m_levelName->setText(levelName(level, m_ratingsShown));   // also if the value didn't change (no valueChanged then)
+    showLevelName();   // also if the value didn't change (no valueChanged then)
     m_level->show();
     m_levelName->show();
     m_stats->show();
@@ -169,7 +175,29 @@ void PlayerStrip::showStrength(int level) {
 void PlayerStrip::setRatingsShown(bool on) {
     m_ratingsShown = on;
     if (!m_level->isHidden())                         // the opponent's strip (yours says "Playing White")
-        m_levelName->setText(levelName(m_level->value(), on));
+        showLevelName();
+}
+
+void PlayerStrip::setLessons(bool on) {
+    m_lessons = on;
+    if (!m_level->isHidden())
+        showLevelName();
+}
+
+// The level's name, and at levels 1-3 with lessons on what the lesson is about (its tooltip).
+void PlayerStrip::showLevelName() {
+    const int level = m_level->value();
+    m_levelName->setText(levelName(level, m_ratingsShown, m_lessons));
+    static const char *lessonTips[] = {
+        "",
+        "A lesson: now and then the opponent leaves a piece free. Look for what you can take.",
+        "A lesson: the opponent never misses a piece you leave hanging. Check your pieces before you move.",
+        "A lesson: the opponent makes simple, direct attacks, and takes the piece if you don't answer. Ask what it "
+        "wants before every move.",
+    };
+    m_levelName->setToolTip(m_lessons && level >= 1 && level <= 3
+                                ? QString(lessonTips[level]) + " (Coaching → Lessons turns the lessons off.)"
+                                : QString());
 }
 
 void PlayerStrip::setStrengthEnabled(bool enabled) {

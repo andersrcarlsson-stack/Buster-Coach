@@ -66,6 +66,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupModeStatus();          // mode status
     restoreSwitches();          // the remembered Coaching switches: AFTER everything that reacts to them
     setupLevels();              // the levels' presets; Custom on a hand change
+    setupLessons();             // the teaching levels: the Lessons switch, forced Full, nudges, words after
     setupEngineLogContents();   // what the engine log shows
     setupCaptures();            // captured pieces
     setupEditor();              // the board editor: in and out of its page

@@ -14,6 +14,7 @@
 #include "engine.h"
 #include "move.h"
 #include <QRandomGenerator>
+#include "lessons.h"
 
 // =================================================================================================
 // 1. SETTINGS: the strength table, the courtesy pause
@@ -45,8 +46,11 @@ static const long long levelNodes[] = {0, 1500000, 1500000, 1500000, 1500000, 15
 struct OpponentLevel { double seeing; Fallibility fallibility; int truth = 10; };
 static const OpponentLevel opponentLevels[] = {
     {0, {}},                                                                                // [0] unused
-    {1.0, {0.22, 0.25, 0.15, 0.25}},       {1.7, {0.20, 0.22, 0.15, 0.25, 0.80}},               // 1000 1150
-    {2.2, {0.02, 0.98, 0.15, 0.25, 0.65}}, {2.6, {0.00, 1.00, 0.15, 0.25, 0.50}},               // 1300 1450
+    {1.0, {0.22, 0.25, 0.15, 0.25}},       {1.7, {0.20, 0.22, 0.15, 0.25, 0.80}},               //  800 1000
+    // Level 3 (2026-11-23, the teaching levels: teaching_levels_design.md): level 5's settings, which without the early
+    // fade measured ~1280 (mistakes_design.md, "All the games in one fit": shipped). Levels 1-3 are the weak but
+    // sensible player, best effort ~800 / 1000 / 1200; the lessons come on top (lessons on).
+    {3.0, {0.00, 0.89, 0.15, 0.25, 0.40}}, {2.6, {0.00, 1.00, 0.15, 0.25, 0.50}},               // 1200 1450
     {3.0, {0.00, 0.89, 0.15, 0.25, 0.40}}, {3.7, {0.00, 0.95, 0.15, 0.50, 0.35}},               // 1600 1750
     {4.4, {0.00, 0.85, 0.15, 0.50, 0.30}}, {5.2, {0.00, 0.73, 0.15, 0.50, 0.25}},               // 1900 2050
     {6.0, {0.00, 0.73, 0.15, 0.75, 0.20}, 12}, {6.5, {0.00, 0.55, 0.15, 0.75, 0.15}, 12},       // 2200 2400
@@ -71,7 +75,9 @@ static const int bookPlies[] = {0, 2, 4, 6, 8, 10, 12, 14, 14, 14, 14, 14};
 // chances, rising steadily to all of them at White's move 25 (ply 48). The cap is unchanged. Fitted on the
 // calibration branch to all the autoplay games against Stockfish 2200: on target from level 4 up; levels 1-3 a lighter
 // fade (they stay bunched and somewhat strong: the fade is not their knob).
-static const double earlySlips[] = {1.0, 0.8, 0.8, 0.65, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
+// Levels 1-3 without the fade since 2026-11-23 (the teaching levels): with it they measured ~1390-1470, practically one
+// level; without it (the table before the fade) ~780 / 960, and level 5's settings ~1280 (now level 3's).
+static const double earlySlips[] = {1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
 static const int fadeEndPly = 48;
 static Fallibility slipsAt(int level, int ply) {
     const int i = std::clamp(level, 0, fullStrength);
@@ -159,6 +165,12 @@ void Game::playPicked(const QString &engineMove) {
         move = QString::fromStdString(pick.move);
         m_lastPickMistake = pick.mistake;
     }
+    if (const std::optional<QString> lesson = lessonMove(engineMove)) {
+        move = *lesson;
+        const auto own = m_opponentTable.find(engineMove.toStdString());
+        m_lastPickMistake = own != m_opponentTable.end()   // a gift is a mistake on purpose (the PGN marks it)
+                            && classifyMove(own->second, m_opponentTable.at(move.toStdString()), false) == MoveQuality::Bad;
+    }
     m_opponentTable.clear();           // used: the next turn needs a new one
     m_opponentHope.clear();
     m_opponentLook.clear();
@@ -172,6 +184,30 @@ void Game::playPicked(const QString &engineMove) {
         if (token == m_moveToken)      // nothing cancelled it meanwhile (takeback, new game, flag)
             playEngineMove(move);
     });
+}
+
+// The teaching levels (teaching_levels_design.md): lessons on, levels 1-3, the coach's table there. Levels 2-3 take a
+// loose piece of yours whenever the truth says it's really won; on the rhythm (every 6-10 of the opponent's moves),
+// level 1 leaves a piece free and level 3 makes a direct attack. A lesson the position doesn't allow waits for the
+// next move. nullopt: the pick's move stands.
+std::optional<QString> Game::lessonMove(const QString &engineMove) {
+    const Lesson lesson = m_lessons ? lessonFor(m_level) : Lesson::None;
+    if (lesson == Lesson::None || m_opponentTable.empty())
+        return std::nullopt;
+    --m_lessonDue;
+    const std::string own = engineMove.toStdString();
+    if (lesson != Lesson::FreePieces)
+        if (const auto take = takeLooseMove(m_model, m_position, m_opponentTable, own))
+            return QString::fromStdString(*take);
+    if (m_lessonDue > 0 || lesson == Lesson::LoosePieces)
+        return std::nullopt;
+    const std::optional<std::string> taught = lesson == Lesson::FreePieces
+        ? freePieceMove(m_model, m_position, m_opponentTable, own, QRandomGenerator::global()->generateDouble())
+        : threatMove(m_model, m_position, m_opponentTable, own);
+    if (!taught)
+        return std::nullopt;                         // not this move: the next one tries again
+    m_lessonDue = lessonGap(QRandomGenerator::global()->generateDouble());
+    return QString::fromStdString(*taught);
 }
 
 // The engine's move, played (after the courtesy pause).
@@ -579,6 +615,7 @@ void Game::restart(bool humanIsWhite) {
     emit sidesChanged(m_humanIsWhite);
     m_moves.clear();
     resetToStart();
+    m_lessonDue = lessonGap(QRandomGenerator::global()->generateDouble());   // a new game: the first lesson's distance
     m_board->setPosition(m_position);
     m_engine->send("ucinewgame");
     emit newGameStarted();   // the coaches' engines get their ucinewgame too (main)

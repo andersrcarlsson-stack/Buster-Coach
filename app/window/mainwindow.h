@@ -112,6 +112,7 @@ private:
     void setupModeStatus();         // panel.cpp
     void restoreSwitches();         // menus.cpp
     void setupLevels();
+    void setupLessons();            // lessons.cpp: the teaching levels' switch, forced Full, the nudges and words after
     void setupEngineLogContents();  // logs.cpp
     void setupCaptures();           // panel.cpp
     void setupEditor();             // editor.cpp
@@ -146,6 +147,12 @@ private:
     double bestChance() const;      // the best win chance in the general coach's table
     void updateMode();              // the mode status text
     void applyLevel(int level);     // sets the switches to a level's preset
+    // --- The teaching levels (lessons.cpp, teaching_levels_design.md) ---
+    bool lessonsActive() const;     // lessons on and the opponent at level 1-3
+    void updateLessons();           // coaching forced to Full (lessons) or given back; the ladder's lock and names
+    void updateLessonNow();         // what the lesson sees in this position (free, loose, threat), from the coach
+    QString lessonWords() const;    // the lesson card: the word after your last move, then the nudge
+    QList<QAction *> levelSwitches() const;   // the seven switches a coaching level sets, in the presets' order
     void updateNewIcons();          // the New actions' kings: our own pieces, with the palette's rim
     void showPage(QWidget *page);   // a side-panel page instead of play: the game rests, menus and keys off
     void showPlay();                // back to play: menus, keys and the bar as before (the game: the caller decides)
@@ -302,4 +309,20 @@ private:
     QString m_boxMoveNow;                      // the move under the box right now ("" = none)
     QList<Coach::LineStep> m_playSteps;        // the line being played through
     int m_playIndex = -1;                      // the step shown now; -1 = no play-through running
+    // The teaching levels (lessons.cpp)
+    QAction *m_lessonsAction = nullptr;        // Coaching → Lessons (levels 1-3 teach; on at the first start)
+    bool m_lessonsForced = false;              // coaching is forced to Full (lessons) now
+    QList<int> m_lessonFree;                   // level 1: Buster's pieces free now (the coach's best move takes one)
+    QList<int> m_lessonLoose;                  // level 2: your piece the real threat takes
+    QString m_lessonThreat;                    // level 3: Buster's real threat now ("" = none)
+    bool m_lessonPassMate = false;             // the latest pass: Buster mates if you pass (level 3 asks then too)
+    Position::Chess m_lessonPosition;          // this turn's position (the words after need its pieces)
+    QList<int> m_lessonLeftLoose;              // your pieces that hung as you left them (before Buster's move)
+    int m_lessonRecapture = -1;                // the square Buster's last move took on (-1 = none): a recapture there isn't free
+    QList<int> m_lessonWasFree, m_lessonWasLoose;   // the same, as your move left them ...
+    QString m_lessonWasThreat;
+    Position::Chess m_lessonWasPosition;       // ... and the position you moved in
+    QString m_lessonYourMove;                  // your move then ("" = no word after to give)
+    int m_lessonPlies = -1;                    // the game's plies after your move (the word after: exactly one more)
+    QString m_lessonAfter;                     // the word after your last move ("You took the free knight.")
 };

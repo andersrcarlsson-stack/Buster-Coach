@@ -92,6 +92,9 @@ public:
     // --- Strength and time control ---------------------------------------------------------------
     // The opponent's strength: 1 (easiest) .. 11 (full strength). Used from the engine's next move on.
     void setLevel(int level) { m_level = level; }
+    // The teaching levels' lessons at levels 1-3 (teaching_levels_design.md; the Coaching menu's Lessons switch).
+    void setLessons(bool on) { m_lessons = on; }
+    bool lessons() const { return m_lessons; }
 
     // The time control (from the Time menu): untimed, or minutes + increment. Applies at once if no move
     // has been made yet, otherwise from the next new game.
@@ -243,6 +246,9 @@ private:
     bool m_lastPickMistake = false;  // the opponent's last move was a mistake on purpose (for the card and the PGN)
     QString m_lastEngineMove;        // the engine's own move behind the last pick (the PGN's "Best was")   
     void playPicked(const QString &engineMove);   // the pick, the courtesy pause, then playEngineMove
+    bool m_lessons = true;           // the teaching levels' lessons at levels 1-3
+    int m_lessonDue = 8;             // the opponent's moves until the next rhythm lesson (levels 1 and 3)
+    std::optional<QString> lessonMove(const QString &engineMove);   // the lesson's move this turn, if any
 
 
     // --- The courtesy pause ----------------------------------------------------------------------

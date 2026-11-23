@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.7 — levels 1–3 teach
+
+- **Taking back is "wins back", also when you're ahead.** After a queen trade begun by Buster (…Qxb3), the card for
+  axb3 said "takes a queen" or "wins the queen", because you were a piece up before. Now: "axb3: wins back the queen."
+
+- **No false threat when you have a winning move.** With a crushing move of your own (Nxe7, +16), the threat card
+  said "Buster threatens …Kd8. Ignoring it costs you.": passing would only have thrown your chance away. A threat with
+  nothing to name now counts only if passing really changes the game.
+
+- **Levels 1–3 are lessons.** They used to be one level in three disguises (each measured about 1400–1500). Now each
+  teaches a beginner one habit: **1 · free pieces** (the opponent now and then leaves a piece unprotected: look for
+  what you can take), **2 · your loose pieces** (it never misses a piece you leave hanging: check your pieces first),
+  **3 · threats** (it makes simple, direct attacks: ask what it wants). A card names the habit before your move and
+  says how it went after it ("You took the free knight."). The lessons build on each other: level 2 also points out
+  free pieces, level 3 all three. Coaching is Full during the lessons, with the warnings waiting for you; your own
+  coaching level comes back at level 4. Coaching → Lessons turns them off: levels 1–3 are then plain easy games of
+  about 800, 1000 and 1200.
+
 ## 1.0.6 — stronger top levels, truer cards
 
 - **A capture that wins at once says so.** When your move takes material and an even trade follows straight away, the

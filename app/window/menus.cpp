@@ -173,6 +173,15 @@ void MainWindow::createMenus() {
     m_warningsAction->setChecked(true);
     // (All on at start = Full coaching, a first run's level. Remembered values are restored later.)
 
+    // The teaching levels (teaching_levels_design.md): not a coaching level's switch, so not in the presets. Restored
+    // and wired in setupLessons (lessons.cpp).
+    m_coachingMenu->addSeparator();
+    m_lessonsAction = m_coachingMenu->addAction("&Lessons at levels 1–3");
+    m_lessonsAction->setToolTip("Levels 1-3 teach a habit: free pieces, your loose pieces, threats. Coaching is Full "
+                                "while you play them. Off: levels 1-3 are plain easy games.");
+    m_lessonsAction->setCheckable(true);
+    m_lessonsAction->setChecked(true);
+
     // --- Settings menu: personal settings, not a level's (coach_design.md "Personal settings") -------------------
     QMenu *settingsMenu = menuBar()->addMenu("&Settings");
     m_marksAction = settingsMenu->addAction("Colour-blind &marks");   // ▲ ● ▼ marks on the box, besides the colours

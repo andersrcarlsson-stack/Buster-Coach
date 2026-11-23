@@ -25,14 +25,15 @@ can select another engine to drive the coach.
   you needed.
 
 **Choose how much help you want** in the Coaching menu, from **Tournament** (none at all) to **Full coaching**
-(everything). And choose your opponent's strength on the slider in its strip, from **1 · Beginner** to
-**11 · Full strength**.
+(everything). And choose your opponent's strength on the slider in its strip, from **1** to **11 · Full strength**.
+Levels 1 to 3 are **lessons**: each one teaches a habit (see [Lessons](#lessons)).
 
 More:
 - [The signs on the board](#signs) — every colour and mark, and what it means
 - [Asking the coach](#asking) — lingering, the cards, the hint, the threat, the play-through
 - [The coaching levels](#levels) — Tournament, Play, Guided, Full coaching, and the switches
 - [The opponent and its strength](#opponent) — what the levels mean, and how they were made
+- [Lessons](#lessons) — levels 1 to 3: free pieces, your loose pieces, threats
 - [Playing a game](#playing) — clocks, the game buttons, taking back, the end of a game
 - [The move list](#movelist) — the marks ? and !, the coach's comments, and your own notes
 - [Openings](#openings) — names, the book, and practising an opening
@@ -247,9 +248,9 @@ is the engine at full strength.
 
 | Level | Plays roughly like |
 |---|---|
-| 1 · Beginner | a lichess rapid player of about 1000 |
-| 2 · Novice | about 1150 |
-| 3 · Casual | about 1300 |
+| 1 · Lesson: free pieces | a lesson (see [Lessons](#lessons)); lessons off: 1 · Beginner, about 800 |
+| 2 · Lesson: your loose pieces | a lesson; lessons off: 2 · Novice, about 1000 |
+| 3 · Lesson: threats | a lesson; lessons off: 3 · Casual, about 1200 |
 | 4 · Improving | about 1450 |
 | 5 · Club player | about 1600 |
 | 6 · Strong club | about 1750 |
@@ -285,8 +286,8 @@ It never blunders in a position that is already decided: a won ending is played 
 players of each rating make mistakes, and how big those mistakes are — about 3000 games for every rating band,
 analysed by a strong engine — so that each level's mistakes look like theirs. Then the levels played each other, and
 Stockfish at a known strength, close to 2000 games in all, and were tuned until they won about as often as their
-ratings say. Levels 4 to 10 are now close to their ratings; levels 1 to 3 still play stronger than their labels, more
-like 1400–1500. What we couldn't do is play them against real people at those ratings. If a level feels too strong or
+ratings say. Levels 4 to 10 are now close to their ratings. Levels 1 to 3 are a best effort: weak but sensible players
+for a beginner, from earlier measurements. What we couldn't do is play them against real people at those ratings. If a level feels too strong or
 too weak for your rating, we'd like to hear about it.
 
 **Full strength** thinks up to a minute on a hard move in an untimed game (about ten seconds on average); "Play now"
@@ -295,6 +296,32 @@ makes it move at once. In timed games it uses its clock.
 **The opening.** At the start the opponent plays moves from an opening book, as players do: how many moves deep
 depends on the level.
 
+
+## Lessons {#lessons}
+
+Levels 1 to 3 teach the three habits a beginner gains most from, one per level, each building on the one before:
+
+| Level | The lesson | The opponent | You learn |
+|---|---|---|---|
+| 1 · Lesson: free pieces | take what's free | now and then leaves a piece unprotected on purpose | to look for what you can take |
+| 2 · Lesson: your loose pieces | don't give anything away | never misses a piece you leave hanging | to check your pieces before you move |
+| 3 · Lesson: threats | see what's coming | makes simple, direct attacks, and takes the piece if you don't answer | to ask "what does it want?" before every move |
+
+The lessons add up: level 2 also tells you when something is free, and level 3 gives all three nudges.
+
+Between the lessons the opponent plays like a weak but sensible player, so a lesson stands out in a calm game. A
+lesson comes about every 6 to 10 of its moves.
+
+**The lesson card.** Before your move a card names the habit, never the answer: "Something is free.", "Check your
+pieces.", "What does Buster want?". After your move it tells you how it went: "You took the free knight.", "The knight
+on e5 was free.", "You kept your bishop safe.", "You answered Buster's threat." Your saved game keeps these words.
+
+**Coaching during the lessons** is Full and can't be changed: the menu shows **Full coaching (lessons)**. Only the
+warnings wait for you (press T for the threat), so the answer stays yours to find. When you move the slider to level
+4 or higher, your own coaching level comes back.
+
+**Lessons off** (Coaching → Lessons at levels 1–3): levels 1 to 3 are plain easy games, about 800, 1000 and 1200, with
+the coaching you choose.
 
 ## Playing a game {#playing}
 

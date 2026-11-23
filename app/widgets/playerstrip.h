@@ -44,6 +44,9 @@ public:
     // The level's approximate rating ("≈ 1600") beside its name: only for the built-in Buster (release_design.md 14).
     void setRatingsShown(bool on);
 
+    // The teaching levels' lessons (Coaching → Lessons): levels 1-3 are named by their lesson when on.
+    void setLessons(bool on);
+
     // A small grey line under the slider: the engine's search (depth, nodes, speed, time). Opponent only.
     void setStats(const QString &text);
 
@@ -61,6 +64,8 @@ private:
     QLabel *m_name;   // a child: owned through the parent-child tree
     CapturedRow *m_captured; // the captured pieces: grouped, overlapping, drawn like the board's
     bool m_white = true;     // the colour set by setPlayer
+    void showLevelName();    // the second line's text and tooltip, from the level, the ratings and the lessons
+    bool m_lessons = true;   // levels 1-3 are lessons (teaching_levels_design.md)
     bool m_ratingsShown = false;   // the level names carry their rating (the opponent is the built-in Buster)
     QLabel *m_advantage;     // "+N" (its own label: its own font size)
     QLabel *m_clock;         // the clock (right, spanning both lines), hidden in untimed games

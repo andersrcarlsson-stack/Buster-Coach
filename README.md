@@ -12,8 +12,8 @@ you when something is wrong.
 - **Ask, don't be told.** H gives a hint (the piece, then where it goes; hints are counted). T asks what the opponent
   threatens. Your hanging pieces get a red "!".
 - **Choose how much help you want:** Tournament (none, and its rules: no takebacks), Play, Guided, or Full coaching.
-- **An opponent that plays like a person.** Eleven strengths, from 1 · Beginner (≈ 1000) through 10 · Top amateur
-  (≈ 2400) to 11 · Full strength. Each level has a horizon, how far it looks, and makes only the mistakes a player of
+- **An opponent that plays like a person.** Eleven strengths, from three lesson levels for beginners (free pieces,
+  your loose pieces, threats) through 10 · Top amateur (≈ 2400) to 11 · Full strength. Each level has a horizon, how far it looks, and makes only the mistakes a player of
   that rating could make: a trap beyond its horizon, never a random blunder. The levels were measured by playing
   games, against each other and against Stockfish at a known strength.
 - **After the game:** a win-chance graph with your mistakes marked, the move list with "?" and "!", the coach's

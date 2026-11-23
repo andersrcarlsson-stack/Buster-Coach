@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(buster_gui VERSION 1.0.6 LANGUAGES CXX)   # the one place the version is set (release_design.md 13)
+project(buster_gui VERSION 1.0.7 LANGUAGES CXX)   # the one place the version is set (release_design.md 13)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)   # build/compile_commands.json: every file's exact compile command (IntelliSense)
 # No build type given (a fresh clone, the release workflow): Release, optimised. Unoptimised, reading saved games was
@@ -31,6 +31,7 @@ add_subdirectory(lib/clock)
 add_subdirectory(lib/record)
 add_subdirectory(lib/openings)
 add_subdirectory(lib/pgn)
+add_subdirectory(lib/lessons)
 
 
 # Qt's paths, flags and libraries come from here (installed Qt 6.4, Widgets module).
@@ -55,14 +56,14 @@ add_executable(buster_gui
     widgets/practicepanel.h widgets/practicepanel.cpp widgets/gamespanel.h widgets/gamespanel.cpp
     window/mainwindow.h window/mainwindow.cpp window/menus.cpp window/hint_threat.cpp window/coaching.cpp
     window/panel.cpp window/logs.cpp window/editor.cpp window/engines.cpp window/practice.cpp window/saving.cpp
-    window/help.cpp)
+    window/help.cpp window/lessons.cpp)
 # The app's own folders: an #include "coach.h" finds the header wherever it lives.
 target_include_directories(buster_gui PRIVATE engine game widgets window)
 # Windows: a GUI program, no console window beside it (WinMain via Qt). Elsewhere this property does nothing.
 set_target_properties(buster_gui PROPERTIES WIN32_EXECUTABLE ON)
 # The version, for the code: a -D define (About, the window's application version).
 target_compile_definitions(buster_gui PRIVATE BUSTER_COACH_VERSION="${PROJECT_VERSION}")
-target_link_libraries(buster_gui PRIVATE Qt6::Widgets board_model uci_info chess_clock game_record opening_names game_pgn)
+target_link_libraries(buster_gui PRIVATE Qt6::Widgets board_model uci_info chess_clock game_record opening_names game_pgn lessons)
 # The title bar's dark hint talks to X11 directly (theme.cpp): link the xcb library (Linux only).
 if(UNIX AND NOT APPLE)
     target_link_libraries(buster_gui PRIVATE xcb)

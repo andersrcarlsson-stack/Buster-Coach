@@ -375,7 +375,13 @@ void MainWindow::updateCoachLine() {
                               ? m_coach->threatText() : QString();
     if (threatWords.isEmpty() && m_aidsAction->isChecked())
         threatWords = checkWords();                 // in check there's no threat question: who gives check instead
-    const QString rows[5] = {threatWords, m_coachNote, m_rowSquare, m_rowMove, m_rowLine};   // in the cards' order
+    // The note card: at levels 1-3 with lessons, the lesson's words first (lessons.cpp), then any other note.
+    QString note = m_coachNote;
+    if (lessonsActive()) {
+        const QString lesson = lessonWords();
+        note = lesson.isEmpty() ? note : note.isEmpty() ? lesson : lesson + "\n" + note;
+    }
+    const QString rows[5] = {threatWords, note, m_rowSquare, m_rowMove, m_rowLine};   // in the cards' order
     // Each card's left edge (Looks D): a little brighter in the dark theme. The line is the evidence: grey, quiet.
     const bool dark = palette().color(QPalette::Window).lightness() < 128;
     // The move's card takes the move's verdict colour, as its box on the board, but only while Move colours shows
@@ -455,6 +461,8 @@ void MainWindow::setupMissed() {
     connect(m_game, &Game::movePlayed, m_coachLine, [this](const QString &, const QString &, bool human) {
         if (human || !m_game->lastPickMistake() || !m_commentsAction->isChecked() || !m_guidanceAction->isChecked())
             return;                                 // as its mark in the move list: Comments after moves AND Guidance
+        if (lessonsActive())
+            return;                                 // the lesson card speaks instead (lessons.cpp)
         m_coachNote = m_engine->shortName() + " slipped. There's something here.";
         updateCoachLine();
     });

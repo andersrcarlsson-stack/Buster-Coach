@@ -462,7 +462,9 @@ void MainWindow::setupModeStatus()
 
 void MainWindow::updateMode()
 {
-    QStringList parts{m_level >= 0 ? QString(levelNames[m_level]) : QString("Custom"), m_game->timeControlText()};
+    const QString level = m_lessonsForced ? QString("Full coaching (lessons)")
+                        : m_level >= 0    ? QString(levelNames[m_level]) : QString("Custom");
+    QStringList parts{level, m_game->timeControlText()};
     if (m_practiceOn)
         parts.prepend("Opening practice");     // first: what kind of game this is
     parts << (m_guidanceAction->isChecked() ? "Guidance" : "No guidance");
@@ -619,10 +621,11 @@ void MainWindow::updateGameRow() {
     if (locked)
         m_tournamentGame = true;                    // remembered until a new game: resigning doesn't open a way back
     m_takebackAction->setEnabled(!m_tournamentGame);
-    m_levelGroup->setEnabled(!locked);              // a group enables or disables all its actions at once
+    // The lessons (lessons.cpp) lock the ladder and the switches too: coaching is Full (lessons) while they run.
+    m_levelGroup->setEnabled(!locked && !m_lessonsForced);   // a group enables or disables all its actions at once
     for (QAction *option : {m_guidanceAction, m_evalBarAction, m_moveColoursAction, m_aidsAction, m_hintsSwitch,
                             m_commentsAction, m_warningsAction})
-        option->setEnabled(!locked);
+        option->setEnabled(!locked && !m_lessonsForced);
     m_opponentStrip->setStrengthEnabled(!locked);
     m_untimedAction->setEnabled(m_level != 0);      // Tournament needs a clock: the other time controls stay free
     m_board->setTouchMove(m_level == 0);            // touch-move: Tournament, from the first touch on

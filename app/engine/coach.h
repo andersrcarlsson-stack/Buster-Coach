@@ -148,6 +148,7 @@ private:
     QString m_masterMove;  // the master coach's best move this turn ("" = none yet)
     UciInfo m_pass;        // the pass's result this turn (the threat search; depth 0 = not searched yet)
     bool m_threatReal = false;   // the latest judgment: ignoring the threat would be a red move
+    int m_justTaken = 0;         // what the opponent's last move took, in pawns (0 = nothing): taking it back "wins back"
     QString m_commonReply;     // this turn's common reply among the red moves ("" = none), from the window
     int m_commonCount = 0;     // how many red moves it punishes
     QString m_passPosition;  // "position fen ..." with the opponent to move again ("" = no pass this turn)

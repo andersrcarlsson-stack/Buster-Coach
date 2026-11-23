@@ -57,6 +57,22 @@ void Coach::onHumanTurnStarted(const QString &startFen, const QStringList &moves
     cancel(); // an old analysis may still be running
     m_forOpponent = false;   // your turn: your moves, all passes, the threat
     m_position = position;   // kept: lineText() plays the lines from here
+    // What the opponent's last move took (2026-11-23, axb3 after ...Qxb3: "wins the queen" in a queen trade). The
+    // coach keeps no history: the game is replayed up to that move.
+    m_justTaken = 0;
+    if (!moves.isEmpty()) {
+        std::optional<Position::Chess> before = m_model.FenInput(startFen.toStdString());
+        Moves replay;
+        for (int i = 0; before && i + 1 < moves.size(); ++i) {
+            std::optional<Position::Move> m = m_model.UciToMove(*before, moves[i].toStdString());
+            before = m ? std::optional<Position::Chess>(replay.make(*before, *m)) : std::nullopt;
+        }
+        if (before)
+            if (const std::optional<Position::Move> last = m_model.UciToMove(*before, moves.last().toStdString())) {
+                static const int value[] = {0, 1, 3, 3, 5, 9, 0};   // by type (code + 1) / 2: -, P N B R Q K
+                m_justTaken = value[(m_model.CapturedPiece(*before, *last) + 1) / 2];
+            }
+    }
     m_prefix = "position fen " + startFen + " moves ";
     if (!moves.isEmpty())
         m_prefix += moves.join(' ') + " ";
@@ -234,8 +250,13 @@ void Coach::scoreNext() {
             // "misses" that mate, which isn't the opponent's threat).
             const UciInfo best = bestScore();
             const bool youMate = best.mate && best.score > 0;
-            const bool real = !youMate && classifyMove(best, m_pass, false) == MoveQuality::Bad;
+            bool real = !youMate && classifyMove(best, m_pass, false) == MoveQuality::Bad;
             m_threatReal = real;   // kept for threatText()
+            // A threat with nothing to name ("Ignoring it costs you.") is real only if passing changes the game: 15+
+            // points of win chance. Else the cost is your own chance passed up, not a threat (2026-11-23: Nxe7 wins,
+            // +16; the pass still +12; "...Kd8" was Buster's defence).
+            if (real && threatText().endsWith("Ignoring it costs you.") && winChance(best) - winChance(m_pass) < 0.15)
+                real = m_threatReal = false;
             emit threatJudged(real ? QString::fromStdString(m_pass.pvMove) : QString());
         }
         emit analysisDone();   // a pass is done: every move has a score at this depth (colours, bar)
@@ -620,17 +641,18 @@ Coach::Why Coach::whyPhrase(const QString &move, bool bad) {
     // A gain far down the line isn't why a good move is good (and the line's tail is its least sure part): only within
     // 6 plies (3 moves each). A red move keeps its loss however far: that is why it's red. (2026-10-30, "d3: wins a pawn
     // on move 10." on an amber quiet move.)
-    if (gain.amount != 0 && (bad || gain.ply <= 6) && !(alreadyLost && gain.amount < 0)) {
-        // The whole gain already there after your move, only trades after it (dxc3 gxf4 Bxf4; Qxa5 and a trade): it's
-        // won now, at ply 0, whatever the line does next (2026-11-22, the card audit's rule 15).
-        const Position::Gain held = (gain.amount > 0 && steps[0].balance == gain.amount) ? Position::Gain{gain.amount, 0} : gain;
+    // The whole gain already there after your move, only trades after it (dxc3 gxf4 Bxf4; Qxa5 and a trade): it's won
+    // now, at ply 0, whatever the line does next (2026-11-22, the card audit's rule 15). Before the 6-ply test: a long
+    // line of trades after axb3 (...Qxb3) must not push it out ("takes a queen", 2026-11-23).
+    const Position::Gain held = (gain.amount > 0 && steps[0].balance == gain.amount) ? Position::Gain{gain.amount, 0} : gain;
+    if (held.amount != 0 && (bad || held.ply <= 6) && !(alreadyLost && held.amount < 0)) {
         // Ply 0 is your move. Black to move: its ply 0 is in move N, its ply 1 (White) in move N + 1.
         const int number = m_position.fullmove_number + (held.ply + (m_position.pit ? 1 : 0)) / 2;
         // Winning back (2026-11-21, "Nxd4: wins a pawn on move 5" after 4...cxd4, Anders' 1.0.4 screenshot; probably
         // the beta tester's "gain a pawn"): behind before the move and at most level after it. A recapture is the
         // common case, a gambit pawn won back later the other. If the move also answers the threat, that follows.
         const int behind = -materialBalance(m_position);
-        if (held.amount > 0 && behind > 0 && held.amount <= behind) {
+        if (held.amount > 0 && ((behind > 0 && held.amount <= behind) || held.amount <= m_justTaken)) {
             QString words = "wins back " + tradeWords(steps, held);
             if (held.ply > 0)
                 words += QString(" on move %1").arg(number);
